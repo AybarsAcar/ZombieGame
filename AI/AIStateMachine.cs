@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Dead_Earth.Scripts.AI.StateMachineBehaviours;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -93,6 +94,12 @@ namespace Dead_Earth.Scripts.AI
     protected AITarget _target = new AITarget();
     protected AIState _currentState;
 
+    // Root Motion Reference Counts
+    // used to set whether we want to play the root motion or not in the Animator
+    // used as counter integer since there are more than 1 layer of Animations
+    protected int _rootPositionRefCount = 0;
+    protected int _rootRotationRefCount = 0;
+
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
@@ -110,6 +117,51 @@ namespace Dead_Earth.Scripts.AI
     public Animator animator => _animator;
     public NavMeshAgent navMeshAgent => _navMeshAgent;
 
+    public Vector3 sensorPosition
+    {
+      get
+      {
+        if (sensorTrigger == null)
+        {
+          return Vector3.zero;
+        }
+
+        var point = sensorTrigger.transform.position;
+
+        point.x += sensorTrigger.center.x * sensorTrigger.transform.lossyScale.x;
+        point.y += sensorTrigger.center.y * sensorTrigger.transform.lossyScale.y;
+        point.z += sensorTrigger.center.z * sensorTrigger.transform.lossyScale.z;
+
+        return point;
+      }
+    }
+
+    public float sensorRadus
+    {
+      get
+      {
+        if (sensorTrigger == null)
+        {
+          return 0f;
+        }
+
+        var radius = Mathf.Max(sensorTrigger.radius * sensorTrigger.transform.lossyScale.x,
+          sensorTrigger.radius * sensorTrigger.transform.lossyScale.y);
+
+        return Mathf.Max(radius, sensorTrigger.radius * sensorTrigger.transform.lossyScale.z);
+      }
+    }
+
+    /// <summary>
+    /// whether to use Root Motion Position
+    /// </summary>
+    public bool useRootMotionPosition => _rootPositionRefCount > 0;
+
+    /// <summary>
+    /// whether to use Root Motion Rotation
+    /// </summary>
+    public bool useRootMotionRotation => _rootRotationRefCount > 0;
+
     protected void Awake()
     {
       // cache components
@@ -117,10 +169,32 @@ namespace Dead_Earth.Scripts.AI
       _animator = GetComponent<Animator>();
       _navMeshAgent = GetComponent<NavMeshAgent>();
       _collider = GetComponent<Collider>();
+
+      if (GameSceneManager.Instance != null)
+      {
+        // Register State Machines to Game Scene Cache
+        if (_collider)
+        {
+          GameSceneManager.Instance.RegisterAIStateMachine(_collider.GetInstanceID(), this);
+        }
+
+        if (sensorTrigger)
+        {
+          GameSceneManager.Instance.RegisterAIStateMachine(sensorTrigger.GetInstanceID(), this);
+        }
+      }
     }
 
     protected virtual void Start()
     {
+      if (sensorTrigger != null)
+      {
+        if (sensorTrigger.TryGetComponent<AISensor>(out var aiSensor))
+        {
+          aiSensor.ParentStateMachine = this;
+        }
+      }
+
       var states = GetComponents<AIState>();
 
       foreach (var state in states)
@@ -145,6 +219,19 @@ namespace Dead_Earth.Scripts.AI
       {
         // fallback case of error
         _currentState = null;
+      }
+
+      if (_animator != null)
+      {
+        // configure the AnimatorController Behaviours
+        // start is recommended for configuration
+        var aiStateMachineLinks = _animator.GetBehaviours<AIStateMachineLink>();
+
+        foreach (var aiStateMachineLink in aiStateMachineLinks)
+        {
+          // setup the relationship
+          aiStateMachineLink.StateMachine = this;
+        }
       }
     }
 
@@ -263,6 +350,103 @@ namespace Dead_Earth.Scripts.AI
       {
         targetTrigger.enabled = false;
       }
+    }
+
+    /// <summary>
+    /// called by the physics system when AI's main collider enters its trigger
+    /// This allows the child state to know when it has entered the sphere of influence of a waypoint
+    /// or last player sighted position
+    /// </summary>
+    /// <param name="other"></param>
+    public void OnTriggerEnter(Collider other)
+    {
+      if (targetTrigger == null || other != targetTrigger) return;
+
+      if (_currentState != null)
+      {
+        // notify child state
+        _currentState.OnDestinationReached(true);
+      }
+    }
+
+    /// <summary>
+    /// Informs the child state that AI entity is no longer at its destionation
+    /// typically true when a new target has been set by the child
+    /// </summary>
+    /// <param name="other"></param>
+    public void OnTriggerExit(Collider other)
+    {
+      if (targetTrigger == null || other != targetTrigger) return;
+
+      if (_currentState != null)
+      {
+        // notify child state
+        _currentState.OnDestinationReached(false);
+      }
+    }
+
+    /// <summary>
+    /// will be called by the Sensor Manager
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="other"></param>
+    public virtual void OnTriggerEvent(AITriggerEventType type, Collider other)
+    {
+      if (_currentState != null)
+      {
+        _currentState.OnTriggerEvent(type, other);
+      }
+    }
+
+    /// <summary>
+    /// we don't want to do anything at the state machine level
+    /// because we don't know what the currentState is so just pass down to AIState
+    /// </summary>
+    protected virtual void OnAnimatorMove()
+    {
+      if (_currentState == null) return;
+
+      // root motion of the current state
+      _currentState.OnAnimatorUpdated();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="layerIndex"></param>
+    protected void OnAnimatorIK(int layerIndex)
+    {
+      if (_currentState == null) return;
+
+      _currentState.OnAnimatorIKUpdated();
+    }
+
+    /// <summary>
+    /// Method to talk to our NavMeshAgent in our AI State Machine
+    /// we can set the NavMeshAgent's behaviour on state basis
+    /// </summary>
+    /// <param name="positionUpdate"></param>
+    /// <param name="rotationUpdate"></param>
+    public void NavMeshAgentControl(bool positionUpdate, bool rotationUpdate)
+    {
+      if (_navMeshAgent == null) return;
+
+      _navMeshAgent.updatePosition = positionUpdate;
+      _navMeshAgent.updateRotation = rotationUpdate;
+    }
+
+    /// <summary>
+    /// Allows us to set the root position and root rotation ref counts
+    /// which decides on the Root Motion Parameters to activate
+    /// 
+    /// Called by the State Machine Behaviours to Enable / Disable root Motion
+    /// </summary>
+    /// <param name="rootPosition">-1 or 1</param>
+    /// <param name="rootRotation">-1 or 1</param>
+    public void AddRootMotionRequest(int rootPosition, int rootRotation)
+    {
+      _rootPositionRefCount += rootPosition;
+      _rootRotationRefCount += rootRotation;
     }
   }
 }
