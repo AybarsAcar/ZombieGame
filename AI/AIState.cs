@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Dead_Earth.Scripts.AI
 {
+  /// <summary>
+  /// Base Class for all Individual AI States used by the AI System (AIStateMachine)
+  /// </summary>
   public abstract class AIState : MonoBehaviour
   {
     public abstract AIStateType GetStateType();
@@ -13,7 +16,7 @@ namespace Dead_Earth.Scripts.AI
 
     protected AIStateMachine _stateMachine;
 
-    public void SetStateMachine(AIStateMachine machine)
+    public virtual void SetStateMachine(AIStateMachine machine)
     {
       _stateMachine = machine;
     }
@@ -42,6 +45,16 @@ namespace Dead_Earth.Scripts.AI
     /// </summary>
     public virtual void OnAnimatorUpdated()
     {
+      // contact the parent state machine and fetch whether using the Root Motion
+      if (_stateMachine.useRootMotionPosition)
+      {
+        _stateMachine.navMeshAgent.velocity = _stateMachine.animator.deltaPosition / Time.deltaTime;
+      }
+
+      if (_stateMachine.useRootMotionRotation)
+      {
+        _stateMachine.transform.rotation = _stateMachine.animator.rootRotation;
+      }
     }
 
     /// <summary>
@@ -66,6 +79,34 @@ namespace Dead_Earth.Scripts.AI
     /// <param name="isReached"></param>
     public virtual void OnDestinationReached(bool isReached)
     {
+    }
+
+    /// <summary>
+    /// calculates the world space position and the world space radius of the sphere of the collider
+    /// taking into account hierarchical scaling
+    /// </summary>
+    /// <param name="collider">collider we want to get the world position and radius</param>
+    /// <param name="position">World position</param>
+    /// <param name="radius">World radius</param>
+    public static void ConvertSphereColliderToWorldSpace(SphereCollider collider, out Vector3 position,
+      out float radius)
+    {
+      position = Vector3.zero;
+      radius = 0f;
+
+      if (collider == null) return;
+
+      position = collider.transform.position;
+
+      position.x += collider.center.x * collider.transform.lossyScale.x;
+      position.y += collider.center.y * collider.transform.lossyScale.y;
+      position.z += collider.center.z * collider.transform.lossyScale.z;
+
+      // make sure to return the largest radius
+      radius = Mathf.Max(collider.radius * collider.transform.lossyScale.x,
+        collider.radius * collider.transform.lossyScale.y);
+
+      radius = Mathf.Max(radius, collider.radius * collider.transform.lossyScale.z);
     }
   }
 }

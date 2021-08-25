@@ -136,7 +136,7 @@ namespace Dead_Earth.Scripts.AI
       }
     }
 
-    public float sensorRadus
+    public float sensorRadius
     {
       get
       {
