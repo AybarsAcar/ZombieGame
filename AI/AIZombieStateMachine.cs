@@ -31,6 +31,7 @@ namespace Dead_Earth.Scripts.AI
     private int _seeking = 0;
     private bool _isFeeding = false;
     private int _attackType = 0;
+    private float _speed = 0f;
 
     // Animator Hashes
     private readonly int _speedHash = Animator.StringToHash("speed");
@@ -88,14 +89,8 @@ namespace Dead_Earth.Scripts.AI
 
     public float Speed
     {
-      get => _navMeshAgent != null ? _navMeshAgent.speed : 0f;
-      set
-      {
-        if (_navMeshAgent != null)
-        {
-          _navMeshAgent.speed = value;
-        }
-      }
+      get => _speed;
+      set => _speed = value;
     }
 
     /// <summary>
@@ -109,7 +104,7 @@ namespace Dead_Earth.Scripts.AI
       if (_animator != null)
       {
         // pass in the animator states
-        _animator.SetFloat(_speedHash, _navMeshAgent.speed);
+        _animator.SetFloat(_speedHash, _speed);
         animator.SetInteger(_seekingHash, _seeking);
         animator.SetBool(_isFeedingHash, _isFeeding);
         animator.SetInteger(_attackHash, _attackType);

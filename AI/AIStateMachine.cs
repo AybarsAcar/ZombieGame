@@ -12,11 +12,12 @@ namespace Dead_Earth.Scripts.AI
   {
     None,
     Idle,
-    Alert,
+    Alerted,
     Attack,
     Feeding,
     Pursuit,
-    Dead
+    Dead,
+    Patrol
   }
 
   /// <summary>

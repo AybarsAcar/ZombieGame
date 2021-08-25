@@ -24,7 +24,7 @@ namespace Dead_Earth.Scripts.AI
 
     public override void SetStateMachine(AIStateMachine machine)
     {
-      if (_stateMachine.GetType() != typeof(AIZombieStateMachine)) return;
+      if (machine.GetType() != typeof(AIZombieStateMachine)) return;
 
       base.SetStateMachine(machine);
       _zombieStateMachine = (AIZombieStateMachine)machine;
