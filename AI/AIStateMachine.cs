@@ -117,6 +117,8 @@ namespace Dead_Earth.Scripts.AI
     // Component Cache Accessors
     public Animator animator => _animator;
     public NavMeshAgent navMeshAgent => _navMeshAgent;
+    public AITargetType TargetType => _target.type;
+    public Vector3 TargetPosition => _target.position;
 
     public Vector3 sensorPosition
     {

@@ -108,5 +108,28 @@ namespace Dead_Earth.Scripts.AI
 
       radius = Mathf.Max(radius, collider.radius * collider.transform.lossyScale.z);
     }
+
+    /// <summary>
+    /// returns the angle between 2 vectors passed in
+    /// with a sign so the AI can determine which way to return
+    /// </summary>
+    /// <param name="fromVector">starting vector</param>
+    /// <param name="toVector">target vector</param>
+    /// <returns></returns>
+    public static float FindSignedAngle(Vector3 fromVector, Vector3 toVector)
+    {
+      if (fromVector == toVector)
+      {
+        return 0f;
+      }
+
+      var angle = Vector3.Angle(fromVector, toVector);
+
+      var cross = Vector3.Cross(fromVector, toVector);
+
+      angle *= Mathf.Sign(cross.y);
+
+      return angle;
+    }
   }
 }
