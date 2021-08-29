@@ -48,12 +48,12 @@ namespace Dead_Earth.Scripts.AI
       // contact the parent state machine and fetch whether using the Root Motion
       if (_stateMachine.useRootMotionPosition)
       {
-        _stateMachine.navMeshAgent.velocity = _stateMachine.animator.deltaPosition / Time.deltaTime;
+        _stateMachine.AINavMeshAgent.velocity = _stateMachine.AIAnimator.deltaPosition / Time.deltaTime;
       }
 
       if (_stateMachine.useRootMotionRotation)
       {
-        _stateMachine.transform.rotation = _stateMachine.animator.rootRotation;
+        _stateMachine.transform.rotation = _stateMachine.AIAnimator.rootRotation;
       }
     }
 

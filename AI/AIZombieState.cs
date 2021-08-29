@@ -43,7 +43,7 @@ namespace Dead_Earth.Scripts.AI
         // Player is the highest priority trigger
         if (other.CompareTag("Player"))
         {
-          var distance = Vector3.Distance(_zombieStateMachine.sensorPosition, other.transform.position);
+          var distance = Vector3.Distance(_zombieStateMachine.SensorPosition, other.transform.position);
 
           if (currentType != AITargetType.VisualPlayer || (currentType == AITargetType.VisualPlayer &&
                                                            distance < _zombieStateMachine.visualThreat.distance))
@@ -63,7 +63,7 @@ namespace Dead_Earth.Scripts.AI
           var flashlightCollider = (BoxCollider)other;
 
           var distanceToThreat =
-            Vector3.Distance(_zombieStateMachine.sensorPosition, flashlightCollider.transform.position);
+            Vector3.Distance(_zombieStateMachine.SensorPosition, flashlightCollider.transform.position);
 
           var zSize = flashlightCollider.size.z * flashlightCollider.transform.lossyScale.z;
 
@@ -84,7 +84,7 @@ namespace Dead_Earth.Scripts.AI
           var soundTrigger = (SphereCollider)other;
           if (soundTrigger == null) return;
 
-          var agentSensorPosition = _zombieStateMachine.sensorPosition;
+          var agentSensorPosition = _zombieStateMachine.SensorPosition;
 
           ConvertSphereColliderToWorldSpace(soundTrigger, out var soundWorldPos, out var soundWorldRadius);
 
@@ -111,17 +111,17 @@ namespace Dead_Earth.Scripts.AI
         // food threat (trigger) which is the least important
         // feeds on a dead body - when dies we assign a trigger and Tag it as AI food
         else if (other.CompareTag("AI Food") && currentType != AITargetType.VisualPlayer &&
-                 currentType != AITargetType.VisualLight && _zombieStateMachine.Satisfaction <= 0.9f &&
+                 currentType != AITargetType.VisualLight && _zombieStateMachine.Satisfaction <= 0.6f &&
                  _zombieStateMachine.audioThreat.type == AITargetType.None)
         {
-          var distanceToThreat = Vector3.Distance(other.transform.position, _zombieStateMachine.sensorPosition);
+          var distanceToThreat = Vector3.Distance(other.transform.position, _zombieStateMachine.SensorPosition);
 
           if (distanceToThreat < _zombieStateMachine.visualThreat.distance)
           {
             // go to the closer food
             if (IsColliderVisible(other, out var hitInfo, _visualLayerMask))
             {
-              _zombieStateMachine.audioThreat.Set(AITargetType.VisualFood, other, other.transform.position,
+              _zombieStateMachine.visualThreat.Set(AITargetType.VisualFood, other, other.transform.position,
                 distanceToThreat);
             }
           }
@@ -143,7 +143,7 @@ namespace Dead_Earth.Scripts.AI
 
       if (_zombieStateMachine == null) return false;
 
-      var head = _zombieStateMachine.sensorPosition;
+      var head = _zombieStateMachine.SensorPosition;
       var direction = other.transform.position - head;
 
       var angle = Vector3.Angle(direction, transform.forward);
@@ -153,7 +153,7 @@ namespace Dead_Earth.Scripts.AI
       if (angle > _zombieStateMachine.FieldOfView * 0.5f) return false;
 
       var hits = Physics.RaycastAll(head, direction.normalized,
-        _zombieStateMachine.sensorRadius * _zombieStateMachine.Sight,
+        _zombieStateMachine.SensorRadius * _zombieStateMachine.Sight,
         layerMask);
 
       var closestColliderDistance = float.MaxValue;

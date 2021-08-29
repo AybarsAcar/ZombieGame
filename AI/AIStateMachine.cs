@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Dead_Earth.Scripts.AI.StateMachineBehaviours;
 using UnityEngine;
 using UnityEngine.AI;
+using Random = UnityEngine.Random;
 
 namespace Dead_Earth.Scripts.AI
 {
@@ -92,7 +93,7 @@ namespace Dead_Earth.Scripts.AI
     public AITarget audioThreat = new AITarget();
 
     protected Dictionary<AIStateType, AIState> _states = new Dictionary<AIStateType, AIState>();
-    protected AITarget _target = new AITarget();
+    protected AITarget _currentTarget = new AITarget();
     protected AIState _currentState;
 
     // Root Motion Reference Counts
@@ -101,6 +102,8 @@ namespace Dead_Earth.Scripts.AI
     protected int _rootPositionRefCount = 0;
     protected int _rootRotationRefCount = 0;
 
+    protected bool _isTargetReached;
+
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
@@ -108,19 +111,31 @@ namespace Dead_Earth.Scripts.AI
     [SerializeField] protected SphereCollider sensorTrigger;
     [SerializeField] [Range(0, 15)] protected float stoppingDistance = 1f;
 
+    [SerializeField] protected AIWaypointNetwork waypointNetwork;
+
+    [Tooltip("Determines whether the Zombie patrols the waypoints in random")] [SerializeField]
+    private bool randomPatrol;
+
+    protected int _currentWaypoint = -1;
+
     // Component Cache
     protected Animator _animator;
     protected NavMeshAgent _navMeshAgent;
     protected Collider _collider;
     protected Transform _transform;
 
-    // Component Cache Accessors
-    public Animator animator => _animator;
-    public NavMeshAgent navMeshAgent => _navMeshAgent;
-    public AITargetType TargetType => _target.type;
-    public Vector3 TargetPosition => _target.position;
+    // Component Cache Accessors & Public Properties
+    public bool IsInMeleeRange { get; set; }
+    public bool IsTargetReached => _isTargetReached;
+    public Animator AIAnimator => _animator;
+    public NavMeshAgent AINavMeshAgent => _navMeshAgent;
+    public AITargetType CurrentTargetType => _currentTarget.type;
+    public Vector3 CurrentTargetPosition => _currentTarget.position;
 
-    public Vector3 sensorPosition
+    public int CurrentTargetColliderId =>
+      _currentTarget.collider != null ? _currentTarget.collider.GetInstanceID() : -1;
+
+    public Vector3 SensorPosition
     {
       get
       {
@@ -139,7 +154,7 @@ namespace Dead_Earth.Scripts.AI
       }
     }
 
-    public float sensorRadius
+    public float SensorRadius
     {
       get
       {
@@ -281,10 +296,13 @@ namespace Dead_Earth.Scripts.AI
       visualThreat.Clear();
       audioThreat.Clear();
 
-      if (_target.type != AITargetType.None)
+      if (_currentTarget.type != AITargetType.None)
       {
-        _target.distance = Vector3.Distance(_transform.position, _target.position);
+        _currentTarget.distance = Vector3.Distance(_transform.position, _currentTarget.position);
       }
+
+      // set it to false at each physics update
+      _isTargetReached = false;
     }
 
     /// <summary>
@@ -296,12 +314,12 @@ namespace Dead_Earth.Scripts.AI
     /// <param name="d">distance to target</param>
     public void SetTarget(AITargetType t, Collider c, Vector3 p, float d)
     {
-      _target.Set(t, c, p, d);
+      _currentTarget.Set(t, c, p, d);
 
       if (targetTrigger != null)
       {
         targetTrigger.radius = stoppingDistance;
-        targetTrigger.transform.position = _target.position;
+        targetTrigger.transform.position = _currentTarget.position;
         targetTrigger.enabled = true;
       }
     }
@@ -312,12 +330,12 @@ namespace Dead_Earth.Scripts.AI
     /// <param name="aiTarget"></param>
     public void SetTarget(AITarget aiTarget)
     {
-      _target = aiTarget;
+      _currentTarget = aiTarget;
 
       if (targetTrigger != null)
       {
         targetTrigger.radius = stoppingDistance;
-        targetTrigger.transform.position = _target.position;
+        targetTrigger.transform.position = _currentTarget.position;
         targetTrigger.enabled = true;
       }
     }
@@ -332,12 +350,12 @@ namespace Dead_Earth.Scripts.AI
     /// <param name="s">Stopping Distance</param>
     public void SetTarget(AITargetType t, Collider c, Vector3 p, float d, float s)
     {
-      _target.Set(t, c, p, d);
+      _currentTarget.Set(t, c, p, d);
 
       if (targetTrigger != null)
       {
         targetTrigger.radius = s;
-        targetTrigger.transform.position = _target.position;
+        targetTrigger.transform.position = _currentTarget.position;
         targetTrigger.enabled = true;
       }
     }
@@ -347,7 +365,7 @@ namespace Dead_Earth.Scripts.AI
     /// </summary>
     public void ClearTarget()
     {
-      _target.Clear();
+      _currentTarget.Clear();
 
       if (targetTrigger != null)
       {
@@ -361,9 +379,11 @@ namespace Dead_Earth.Scripts.AI
     /// or last player sighted position
     /// </summary>
     /// <param name="other"></param>
-    public void OnTriggerEnter(Collider other)
+    protected void OnTriggerEnter(Collider other)
     {
-      if (targetTrigger == null || other != targetTrigger) return;
+      if (!other.CompareTag("Target Trigger")) return;
+
+      _isTargetReached = true;
 
       if (_currentState != null)
       {
@@ -373,13 +393,26 @@ namespace Dead_Earth.Scripts.AI
     }
 
     /// <summary>
-    /// Informs the child state that AI entity is no longer at its destionation
+    /// Doesn't inform the child state only set the target reached if the AI is in the destination
+    /// </summary>
+    /// <param name="other"></param>
+    protected void OnTriggerStay(Collider other)
+    {
+      if (targetTrigger == null || other != targetTrigger) return;
+
+      _isTargetReached = true;
+    }
+
+    /// <summary>
+    /// Informs the child state that AI entity is no longer at its destination
     /// typically true when a new target has been set by the child
     /// </summary>
     /// <param name="other"></param>
-    public void OnTriggerExit(Collider other)
+    protected void OnTriggerExit(Collider other)
     {
-      if (targetTrigger == null || other != targetTrigger) return;
+      _isTargetReached = false;
+
+      if (!other.CompareTag("Target Trigger")) return;
 
       if (_currentState != null)
       {
@@ -450,6 +483,62 @@ namespace Dead_Earth.Scripts.AI
     {
       _rootPositionRefCount += rootPosition;
       _rootRotationRefCount += rootRotation;
+    }
+
+    /// <summary>
+    /// Fetches the world space position of the state machine's currently set
+    /// waypoint with optional increment
+    /// </summary>
+    /// <param name="increment">whether to increment to the next waypoint</param>
+    /// <returns></returns>
+    public Vector3 GetWaypointPosition(bool increment)
+    {
+      if (_currentWaypoint == -1)
+      {
+        // initialisation stage, it is the first time it is called
+        _currentWaypoint = randomPatrol ? Random.Range(0, waypointNetwork.Waypoints.Count) : 0;
+      }
+
+      else if (increment)
+      {
+        // increment the waypoint index
+        NextWaypoint();
+      }
+
+      if (waypointNetwork.Waypoints[_currentWaypoint] != null)
+      {
+        var newWaypoint = waypointNetwork.Waypoints[_currentWaypoint];
+
+        // this is our new target position
+        // sets the Target trigger's position
+        SetTarget(AITargetType.Waypoint, null, newWaypoint.position,
+          Vector3.Distance(newWaypoint.position, transform.position));
+
+        return newWaypoint.position;
+      }
+
+      return Vector3.zero;
+    }
+
+
+    /// <summary>
+    /// sets the next waypoint
+    /// </summary>
+    private void NextWaypoint()
+    {
+      if (randomPatrol && waypointNetwork.Waypoints.Count > 1)
+      {
+        var oldWaypoint = _currentWaypoint;
+
+        while (_currentWaypoint == oldWaypoint)
+        {
+          _currentWaypoint = Random.Range(0, waypointNetwork.Waypoints.Count);
+        }
+      }
+      else
+      {
+        _currentWaypoint = _currentWaypoint == waypointNetwork.Waypoints.Count - 1 ? 0 : _currentWaypoint + 1;
+      }
     }
   }
 }

@@ -95,7 +95,11 @@ namespace Dead_Earth.Scripts.AI
 
       if (_timer > _idleTime)
       {
-        return AIStateType.Patrol;
+        // set the current waypoint stored as the next destination
+        _zombieStateMachine.AINavMeshAgent.SetDestination(_zombieStateMachine.GetWaypointPosition(false));
+        _zombieStateMachine.AINavMeshAgent.isStopped = false;
+
+        return AIStateType.Alerted;
       }
 
       return AIStateType.Idle;

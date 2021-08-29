@@ -27,6 +27,17 @@ namespace Dead_Earth.Scripts.AI
     // if below a certain threshold then feeds
     [SerializeField] [Range(0f, 1f)] private float satisfaction = 1f;
 
+    // replenish rate of the zombie while feeding
+    // in Percentage - divided by 100f in calculation
+    [Tooltip("Satisfaction replenish rate in Percentage while feeding")] [SerializeField]
+    private float replenishRate = 2f;
+
+    // how quickly satisfaction depletes, multiplied with the speed
+    // in Percentage - divided by 100f in calculation
+    [Tooltip("Satisfaction depleting rate in Percentage while moving")] [SerializeField]
+    private float depletionRate = 0.4f;
+
+
     private bool _isCrawling = false;
     private int _seeking = 0;
     private bool _isFeeding = false;
@@ -46,6 +57,7 @@ namespace Dead_Earth.Scripts.AI
     public float FieldOfView => fieldOfView;
     public float Sight => sight;
     public float Hearing => hearing;
+    public float ReplenishRate => replenishRate;
 
     public float Aggression
     {
@@ -105,9 +117,9 @@ namespace Dead_Earth.Scripts.AI
       {
         // pass in the animator states
         _animator.SetFloat(_speedHash, _speed);
-        animator.SetInteger(_seekingHash, _seeking);
-        animator.SetBool(_isFeedingHash, _isFeeding);
-        animator.SetInteger(_attackHash, _attackType);
+        _animator.SetInteger(_seekingHash, _seeking);
+        _animator.SetBool(_isFeedingHash, _isFeeding);
+        _animator.SetInteger(_attackHash, _attackType);
       }
     }
   }
