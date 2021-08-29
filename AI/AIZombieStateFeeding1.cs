@@ -9,6 +9,12 @@ namespace Dead_Earth.Scripts.AI
   {
     [SerializeField] private float slerpSpeed = 5f;
 
+    [SerializeField] private Transform bloodParticlesMount;
+    [SerializeField] [Range(0.01f, 1f)] private float bloodParticlesBurstTime = 0.01f;
+    [SerializeField] [Range(1, 100)] private int bloodParticlesBurstAMount = 10;
+
+    private float _timer = 0;
+
     // Animator Hashes
     private int _eatingStateHash = Animator.StringToHash("Feeding State");
     private int _eatingLayerIndex = -1;
@@ -26,6 +32,8 @@ namespace Dead_Earth.Scripts.AI
       {
         _eatingLayerIndex = _zombieStateMachine.AIAnimator.GetLayerIndex("Cinematic");
       }
+
+      _timer = 0f;
 
       // set the NavMeshAgent properties
       _zombieStateMachine.NavMeshAgentControl(true, false);
@@ -52,6 +60,8 @@ namespace Dead_Earth.Scripts.AI
 
     public override AIStateType OnUpdate()
     {
+      _timer += Time.deltaTime;
+
       if (_zombieStateMachine.Satisfaction > 0.9f)
       {
         _zombieStateMachine.GetWaypointPosition(false);
@@ -82,6 +92,26 @@ namespace Dead_Earth.Scripts.AI
         // add to satisfaction
         _zombieStateMachine.Satisfaction =
           Mathf.Min(_zombieStateMachine.Satisfaction + (Time.deltaTime * _zombieStateMachine.ReplenishRate) / 100f, 1f);
+
+        // start emitting the blood particle effect while eating
+        if (GameSceneManager.Instance != null && GameSceneManager.Instance.BloodParticleSystem != null)
+        {
+          if (_timer > bloodParticlesBurstTime)
+          {
+            // emit the particle
+            var particleSystem = GameSceneManager.Instance.BloodParticleSystem;
+
+            particleSystem.transform.position = bloodParticlesMount.position;
+            particleSystem.transform.rotation = bloodParticlesMount.rotation;
+
+            var mainParticle = particleSystem.main;
+            mainParticle.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            particleSystem.Emit(bloodParticlesBurstAMount);
+
+            _timer = 0f;
+          }
+        }
       }
 
       if (!_zombieStateMachine.useRootMotionRotation)

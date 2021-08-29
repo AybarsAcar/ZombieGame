@@ -10,6 +10,10 @@ namespace Dead_Earth.Scripts
   /// </summary>
   public class GameSceneManager : MonoBehaviour
   {
+    // blood particle system in the scene
+    [SerializeField] private ParticleSystem bloodParticleSystem;
+    public ParticleSystem BloodParticleSystem => bloodParticleSystem;
+
     // make it singleton
     private static GameSceneManager _instance;
 
@@ -26,8 +30,10 @@ namespace Dead_Earth.Scripts
       }
     }
 
+    // private caches
     // int - Unity Game Object Unique Id which is integer type
     private Dictionary<int, AIStateMachine> _stateMachines = new Dictionary<int, AIStateMachine>();
+
 
     /// <summary>
     /// caches the passed in state machine to the class dictionary
