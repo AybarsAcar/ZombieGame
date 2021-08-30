@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityStandardAssets.Characters.FirstPerson;
 
@@ -8,9 +9,23 @@ namespace Dead_Earth.Scripts.FPS
     NotMoving,
     Walking,
     Running,
+    Crouching,
     NotGrounded,
-    Landing
+    Landing,
   }
+
+  /// <summary>
+  /// describes whether it should be processed by xPlayHead or yPlayHead
+  /// </summary>
+  public enum CurveControllerBobCallbackType
+  {
+    Horizontal,
+    Vertical
+  }
+
+  // delegates
+  public delegate void CurveControlledBobCallback();
+
 
   /// <summary>
   /// First Person Controller
@@ -18,13 +33,20 @@ namespace Dead_Earth.Scripts.FPS
   [RequireComponent(typeof(CharacterController))]
   public class FPSController : MonoBehaviour
   {
-    [SerializeField] private float walkSpeed = 1f;
+    [SerializeField] private float walkSpeed = 2.4f;
     [SerializeField] private float runSpeed = 4.5f;
     [SerializeField] private float jumpSpeed = 7.5f;
+    [SerializeField] private float crouchSpeed = 1f;
     [SerializeField] private float stickToGroundForce = 5.5f;
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [SerializeField] private MouseLook mouseLook;
+
+    [SerializeField] private CurveControlledBob headBob = new CurveControlledBob();
+
+    // used so when we run our head bob doesn't increase linearly 
+    [SerializeField] private float runSpeedHeadBobFactor = 0.7f;
+
 
     // cached object references
     private Camera _camera;
@@ -37,7 +59,15 @@ namespace Dead_Earth.Scripts.FPS
     private bool _previouslyGrounded = false;
     private bool _isWalking = true;
     private bool _isJumping = false;
+    private bool _isCrouching = false;
     private PlayerMoveStatus _movementStatus = PlayerMoveStatus.NotMoving;
+    private Vector3 _localSpaceCameraPos = Vector3.zero;
+    private float _controllerHeight = 0f; // initial height of the controller standing up position
+
+    // test for footsteps
+    private readonly List<AudioSource> _audioSources = new List<AudioSource>();
+    private int _audioToUse = 0;
+
 
     // timers
     private float _fallingTimer = 0f;
@@ -51,7 +81,18 @@ namespace Dead_Earth.Scripts.FPS
     {
       // cache the game objects
       _characterController = GetComponent<CharacterController>();
+      _controllerHeight = _characterController.height; // cache the height
+
       _camera = Camera.main;
+
+      // fill audio sources
+      foreach (var audioSource in GetComponents<AudioSource>())
+      {
+        _audioSources.Add(audioSource);
+      }
+
+      // cache the local position of the camera
+      _localSpaceCameraPos = _camera.transform.localPosition;
 
       // set the initial state
       _movementStatus = PlayerMoveStatus.NotMoving;
@@ -61,6 +102,11 @@ namespace Dead_Earth.Scripts.FPS
 
       // initialise the MouseLook
       mouseLook.Init(transform, _camera.transform);
+
+      // initialise the Head Bob Animation
+      headBob.Init();
+
+      headBob.RegisterEventCallback(1.5f, PlayFootStepSound, CurveControllerBobCallbackType.Vertical);
     }
 
     private void Update()
@@ -84,9 +130,18 @@ namespace Dead_Earth.Scripts.FPS
 
       // process the jump
       // the jump state needs to read here to make sure it is not missed
-      if (!_jumpButtonPressed)
+      if (!_jumpButtonPressed && !_isCrouching)
       {
         _jumpButtonPressed = Input.GetButtonDown("Jump");
+      }
+
+      // if crouch button is pressed - update the local state
+      if (Input.GetButtonDown("Crouch"))
+      {
+        _isCrouching = !_isCrouching;
+
+        // set the height
+        _characterController.height = _isCrouching ? _controllerHeight / 2 : _controllerHeight;
       }
 
       // player was in the air but now grounded
@@ -111,6 +166,10 @@ namespace Dead_Earth.Scripts.FPS
       {
         _movementStatus = PlayerMoveStatus.NotMoving;
       }
+      else if (_isCrouching)
+      {
+        _movementStatus = PlayerMoveStatus.Crouching;
+      }
       else if (_isWalking)
       {
         _movementStatus = PlayerMoveStatus.Walking;
@@ -132,7 +191,7 @@ namespace Dead_Earth.Scripts.FPS
       var wasWalking = _isWalking;
       _isWalking = !Input.GetKey(KeyCode.LeftShift);
 
-      var speed = _isWalking ? walkSpeed : runSpeed;
+      var speed = _isCrouching ? crouchSpeed : _isWalking ? walkSpeed : runSpeed;
 
       _inputVector = new Vector2(horizontal, vertical);
 
@@ -182,6 +241,32 @@ namespace Dead_Earth.Scripts.FPS
 
       // move character controller
       _characterController.Move(_moveDirection * Time.fixedDeltaTime);
+
+      // move our camera position based on the head bob
+      // make sure the character is moving
+      var horizontalSpeed = new Vector3(_characterController.velocity.x, 0f, _characterController.velocity.z);
+      if (horizontalSpeed.magnitude > 0.01f)
+      {
+        var multiplier = _isCrouching || _isWalking ? 1 : runSpeedHeadBobFactor;
+
+        // animate the camera
+        _camera.transform.localPosition =
+          _localSpaceCameraPos + headBob.GetVectorOffset(horizontalSpeed.magnitude * multiplier);
+      }
+      else
+      {
+        _camera.transform.localPosition = _localSpaceCameraPos;
+      }
+    }
+
+    private void PlayFootStepSound()
+    {
+      if (_isCrouching) return;
+
+      _audioSources[_audioToUse].Play();
+
+      // alternate
+      _audioToUse = _audioToUse == 0 ? 1 : 0;
     }
   }
 }
