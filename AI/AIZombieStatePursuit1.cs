@@ -74,8 +74,9 @@ namespace Dead_Earth.Scripts.AI
         return AIStateType.Patrol;
       }
 
+      
       // if chasing the Player and now is in its melee attack range
-      if (_stateMachine.CurrentTargetType == AITargetType.VisualPlayer && _zombieStateMachine.IsInMeleeRange)
+      if (_zombieStateMachine.CurrentTargetType == AITargetType.VisualPlayer && _zombieStateMachine.IsInMeleeRange)
       {
         return AIStateType.Attack;
       }

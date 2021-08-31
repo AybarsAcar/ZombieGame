@@ -40,6 +40,8 @@ namespace Dead_Earth.Scripts.FPS
     [SerializeField] private float stickToGroundForce = 5.5f;
     [SerializeField] private float gravityMultiplier = 2.5f;
 
+    [SerializeField] private GameObject flashLight;
+
     [SerializeField] private MouseLook mouseLook;
 
     [SerializeField] private CurveControlledBob headBob = new CurveControlledBob();
@@ -107,6 +109,11 @@ namespace Dead_Earth.Scripts.FPS
       headBob.Init();
 
       headBob.RegisterEventCallback(1.5f, PlayFootStepSound, CurveControllerBobCallbackType.Vertical);
+
+      if (flashLight)
+      {
+        flashLight.SetActive(false);
+      }
     }
 
     private void Update()
@@ -142,6 +149,11 @@ namespace Dead_Earth.Scripts.FPS
 
         // set the height
         _characterController.height = _isCrouching ? _controllerHeight / 2 : _controllerHeight;
+      }
+
+      if (Input.GetButtonDown("Flashlight"))
+      {
+        flashLight.SetActive(!flashLight.activeSelf);
       }
 
       // player was in the air but now grounded

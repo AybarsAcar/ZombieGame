@@ -87,6 +87,7 @@ namespace Dead_Earth.Scripts.AI
       }
 
       if (_zombieStateMachine.audioThreat.type == AITargetType.None &&
+          _zombieStateMachine.CurrentTargetType == AITargetType.None &&
           _zombieStateMachine.visualThreat.type == AITargetType.VisualFood)
       {
         _zombieStateMachine.SetTarget(_stateMachine.visualThreat);
@@ -144,6 +145,18 @@ namespace Dead_Earth.Scripts.AI
 
         // turn on spot until the current angle towards the steering target is less than the waypoint angle threshold
         _zombieStateMachine.Seeking = (int)Mathf.Sign(angle);
+      }
+
+      else
+      {
+        // not a waypoint, not a visual or audio threat
+        // so zombie stays alerted when they go to the source of light or audio
+        // but the threat is not there anymore
+        if (_directionChangeTimer > directionChangeDuration)
+        {
+          _zombieStateMachine.Seeking = (int)Mathf.Sign(Random.Range(-1f, 1f));
+          _directionChangeTimer = 0f;
+        }
       }
 
       return AIStateType.Alerted;

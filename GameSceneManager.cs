@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Dead_Earth.Scripts.AI;
 using UnityEngine;
@@ -30,6 +31,11 @@ namespace Dead_Earth.Scripts
       }
     }
 
+    private void Awake()
+    {
+      DontDestroyOnLoad(gameObject);
+    }
+
     // private caches
     // int - Unity Game Object Unique Id which is integer type
     private Dictionary<int, AIStateMachine> _stateMachines = new Dictionary<int, AIStateMachine>();
@@ -42,9 +48,9 @@ namespace Dead_Earth.Scripts
     /// <param name="stateMachine"></param>
     public void RegisterAIStateMachine(int key, AIStateMachine stateMachine)
     {
-      if (_stateMachines.ContainsKey(key))
+      if (!_stateMachines.ContainsKey(key))
       {
-        _stateMachines[key] = stateMachine;
+        _stateMachines.Add(key, stateMachine);
       }
     }
 

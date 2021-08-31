@@ -121,6 +121,9 @@ namespace Dead_Earth.Scripts.AI
         _animator.SetBool(_isFeedingHash, _isFeeding);
         _animator.SetInteger(_attackHash, _attackType);
       }
+
+      // reduce the satisfaction of the zombie so it gets hungry
+      satisfaction = Mathf.Max(0, satisfaction - ((depletionRate * Time.deltaTime) / 100f) * Mathf.Pow(_speed, 2));
     }
   }
 }
