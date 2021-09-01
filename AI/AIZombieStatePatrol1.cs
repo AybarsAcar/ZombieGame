@@ -147,26 +147,5 @@ namespace Dead_Earth.Scripts.AI
         _zombieStateMachine.GetWaypointPosition(true);
       }
     }
-
-
-    /// <summary>
-    /// called in the OnAnimatorIK
-    /// we can set the Humanoid parts on it
-    ///
-    /// Overrides IK Goals
-    /// </summary>
-    public override void OnAnimatorIKUpdated()
-    {
-      base.OnAnimatorIKUpdated();
-
-      /*if (_zombieStateMachine == null) return;
-
-      // look at the waypoint
-      // we add the unit up vector so the AI won't look at the ground
-      _zombieStateMachine.animator.SetLookAtPosition(_zombieStateMachine.TargetPosition + Vector3.up);
-
-      // set the weight of the look to make it natural
-      _zombieStateMachine.animator.SetLookAtWeight(0.4f);*/
-    }
   }
 }

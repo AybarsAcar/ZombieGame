@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.AI
@@ -16,7 +17,6 @@ namespace Dead_Earth.Scripts.AI
       if (aiStateMachine)
       {
         aiStateMachine.IsInMeleeRange = true;
-        Debug.Log("SET TO " + aiStateMachine.IsInMeleeRange);
       }
     }
 

@@ -28,6 +28,11 @@ namespace Dead_Earth.Scripts.AI
     [SerializeField] private float repathAudioMinDuration = 0.25f;
     [SerializeField] private float repathAudioMaxDuration = 5;
 
+    [SerializeField] [Range(0f, 1f)] private float lookAtWeight = 0.7f;
+    [SerializeField] [Range(0f, 90f)] private float lookAtAngleThreshold = 15f;
+
+    private float _currentLookAtWeight;
+
     private float _timer;
     private float _repathTimer; // set to 0 each time we repath
 
@@ -55,6 +60,8 @@ namespace Dead_Earth.Scripts.AI
       // set path
       _zombieStateMachine.AINavMeshAgent.SetDestination(_zombieStateMachine.CurrentTargetPosition);
       _zombieStateMachine.AINavMeshAgent.isStopped = false;
+
+      _currentLookAtWeight = 0f;
     }
 
     public override AIStateType GetStateType()
@@ -74,7 +81,6 @@ namespace Dead_Earth.Scripts.AI
         return AIStateType.Patrol;
       }
 
-      
       // if chasing the Player and now is in its melee attack range
       if (_zombieStateMachine.CurrentTargetType == AITargetType.VisualPlayer && _zombieStateMachine.IsInMeleeRange)
       {
@@ -265,6 +271,39 @@ namespace Dead_Earth.Scripts.AI
 
       // Default
       return AIStateType.Pursuit;
+    }
+
+    /// <summary>
+    /// called in the OnAnimatorIK
+    /// we can set the Humanoid parts on it
+    ///
+    /// Overrides IK Goals
+    /// </summary>
+    public override void OnAnimatorIKUpdated()
+    {
+      base.OnAnimatorIKUpdated();
+
+      if (_zombieStateMachine == null) return;
+
+      if (Vector3.Angle(_zombieStateMachine.transform.forward,
+        _zombieStateMachine.CurrentTargetPosition - _zombieStateMachine.SensorPosition) < lookAtAngleThreshold)
+      {
+        // look at the waypoint
+        // we add the unit up vector so the AI won't look at the ground
+        _zombieStateMachine.AIAnimator.SetLookAtPosition(_zombieStateMachine.CurrentTargetPosition + Vector3.up);
+
+        // set the weight of the look to make it natural
+        _currentLookAtWeight = Mathf.Lerp(_currentLookAtWeight, lookAtWeight, Time.deltaTime);
+
+        _zombieStateMachine.AIAnimator.SetLookAtWeight(_currentLookAtWeight);
+      }
+      else
+      {
+        // as we leave the attack state slowly blend to not look at again
+        _currentLookAtWeight = Mathf.Lerp(_currentLookAtWeight, 0, Time.deltaTime);
+
+        _zombieStateMachine.AIAnimator.SetLookAtWeight(_currentLookAtWeight);
+      }
     }
   }
 }
