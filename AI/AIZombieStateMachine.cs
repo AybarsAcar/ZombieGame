@@ -1,3 +1,4 @@
+using Dead_Earth.Scripts.FPS;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.AI
@@ -124,6 +125,71 @@ namespace Dead_Earth.Scripts.AI
 
       // reduce the satisfaction of the zombie so it gets hungry
       satisfaction = Mathf.Max(0, satisfaction - ((depletionRate * Time.deltaTime) / 100f) * Mathf.Pow(_speed, 2));
+    }
+
+    /// <summary>
+    /// Override the Take damage from the base class
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="force"></param>
+    /// <param name="damage"></param>
+    /// <param name="bodyPart"></param>
+    /// <param name="characterManager"></param>
+    /// <param name="hitDirection"></param>
+    public override void TakeDamage(Vector3 position, Vector3 force, int damage, Rigidbody bodyPart,
+      CharacterManager characterManager, int hitDirection = 0)
+    {
+      base.TakeDamage(position, force, damage, bodyPart, characterManager, hitDirection);
+
+      if (GameSceneManager.Instance != null && GameSceneManager.Instance.BloodParticleSystem != null)
+      {
+        var bloodSystem = GameSceneManager.Instance.BloodParticleSystem;
+
+        bloodSystem.transform.position = position;
+        var mainModule = bloodSystem.main;
+        mainModule.simulationSpace = ParticleSystemSimulationSpace.World;
+        bloodSystem.Emit(60);
+      }
+
+      health -= damage;
+
+      // rag doll the AIZombie
+      var hitStrength = force.magnitude;
+      var shouldRagDoll = hitStrength > 1f || health <= 0;
+
+      if (shouldRagDoll)
+      {
+        // completely clear the current state in the state machine
+        if (_currentState != null)
+        {
+          _currentState.OnExitState();
+          _currentState = null;
+          currentStateType = AIStateType.None;
+        }
+        
+        // turn off the following properties
+        _navMeshAgent.enabled = false;
+        _animator.enabled = false;
+        _collider.enabled = false; // disable the main collider as well
+
+        IsInMeleeRange = false;
+        
+        
+
+        foreach (var body in _bodyParts)
+        {
+          if (body != null)
+          {
+            // allow physics system to interact with the body parts
+            body.isKinematic = false;
+          }
+        }
+
+        if (hitStrength > 1f)
+        {
+          bodyPart.AddForce(force, ForceMode.Impulse);
+        }
+      }
     }
   }
 }

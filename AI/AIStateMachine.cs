@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Dead_Earth.Scripts.AI.StateMachineBehaviours;
+using Dead_Earth.Scripts.FPS;
 using UnityEngine;
 using UnityEngine.AI;
 using Random = UnityEngine.Random;
@@ -104,9 +105,13 @@ namespace Dead_Earth.Scripts.AI
 
     protected bool _isTargetReached;
 
+    protected List<Rigidbody> _bodyParts = new List<Rigidbody>();
+    protected int _aiBodyPartLayer = -1;
+
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
+    [SerializeField] protected Transform rootBone;
     [SerializeField] protected SphereCollider targetTrigger;
     [SerializeField] protected SphereCollider sensorTrigger;
     [SerializeField] [Range(0, 15)] protected float stoppingDistance = 1f;
@@ -188,6 +193,9 @@ namespace Dead_Earth.Scripts.AI
       _navMeshAgent = GetComponent<NavMeshAgent>();
       _collider = GetComponent<Collider>();
 
+      // get BodyPart Layer
+      _aiBodyPartLayer = LayerMask.NameToLayer("AI Body Part");
+
       if (GameSceneManager.Instance != null)
       {
         // Register State Machines to Game Scene Cache
@@ -199,6 +207,24 @@ namespace Dead_Earth.Scripts.AI
         if (sensorTrigger)
         {
           GameSceneManager.Instance.RegisterAIStateMachine(sensorTrigger.GetInstanceID(), this);
+        }
+      }
+
+      if (rootBone != null)
+      {
+        // cache the bones
+        var bodies = rootBone.GetComponentsInChildren<Rigidbody>();
+
+        foreach (var bodyPart in bodies)
+        {
+          if (bodyPart != null && bodyPart.gameObject.layer == _aiBodyPartLayer)
+          {
+            // add to the list of our rag doll list
+            _bodyParts.Add(bodyPart);
+
+            // store the body parts
+            GameSceneManager.Instance.RegisterAIStateMachine(bodyPart.GetInstanceID(), this);
+          }
         }
       }
     }
@@ -539,6 +565,20 @@ namespace Dead_Earth.Scripts.AI
       {
         _currentWaypoint = _currentWaypoint == waypointNetwork.Waypoints.Count - 1 ? 0 : _currentWaypoint + 1;
       }
+    }
+
+    /// <summary>
+    /// Handles when the AI takes damage
+    /// </summary>
+    /// <param name="position">where the AI is hit</param>
+    /// <param name="force">force of the hit</param>
+    /// <param name="damage">amount of damage</param>
+    /// <param name="bodyPart">which body part is hit</param>
+    /// <param name="characterManager">which player hit the AI</param>
+    /// <param name="hitDirection">Used for hit animations but doesn't want to rag doll</param>
+    public virtual void TakeDamage(Vector3 position, Vector3 force, int damage, Rigidbody bodyPart,
+      CharacterManager characterManager, int hitDirection = 0)
+    {
     }
   }
 }
