@@ -83,7 +83,7 @@ namespace Dead_Earth.Scripts.FPS
 
         if (aiStateMachine != null)
         {
-          aiStateMachine.TakeDamage(hit.point, ray.direction * 50f, 50, hit.rigidbody, this, 0);
+          aiStateMachine.TakeDamage(hit.point, ray.direction * 25f, 50, hit.rigidbody, this, 0);
         }
       }
     }

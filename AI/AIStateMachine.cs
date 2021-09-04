@@ -108,6 +108,7 @@ namespace Dead_Earth.Scripts.AI
     protected List<Rigidbody> _bodyParts = new List<Rigidbody>();
     protected int _aiBodyPartLayer = -1;
 
+    protected bool _cinematicEnabled = false;
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
@@ -175,6 +176,13 @@ namespace Dead_Earth.Scripts.AI
       }
     }
 
+    public bool CinematicEnabled
+    {
+      get => _cinematicEnabled;
+      set => _cinematicEnabled = value;
+    }
+
+
     /// <summary>
     /// whether to use Root Motion Position
     /// </summary>
@@ -219,6 +227,8 @@ namespace Dead_Earth.Scripts.AI
         {
           if (bodyPart != null && bodyPart.gameObject.layer == _aiBodyPartLayer)
           {
+            bodyPart.isKinematic = true;
+
             // add to the list of our rag doll list
             _bodyParts.Add(bodyPart);
 
@@ -575,7 +585,7 @@ namespace Dead_Earth.Scripts.AI
     /// <param name="damage">amount of damage</param>
     /// <param name="bodyPart">which body part is hit</param>
     /// <param name="characterManager">which player hit the AI</param>
-    /// <param name="hitDirection">Used for hit animations but doesn't want to rag doll</param>
+    /// <param name="hitDirection">Used for hit animations but doesn't want to rag doll, it is the hitType in Animator</param>
     public virtual void TakeDamage(Vector3 position, Vector3 force, int damage, Rigidbody bodyPart,
       CharacterManager characterManager, int hitDirection = 0)
     {
