@@ -1,6 +1,4 @@
-using System;
 using Dead_Earth.Scripts.ImageEffects;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.FPS

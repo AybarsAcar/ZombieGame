@@ -116,6 +116,10 @@ namespace Dead_Earth.Scripts.AI
     private readonly int _lowerBodyDamageHash = Animator.StringToHash("lowerBodyDamage");
     private readonly int _stateHash = Animator.StringToHash("state");
 
+    // Animator Layers
+    private int _upperBodyLayer = -1;
+    private int _lowerBodyLayer = -1;
+
     // Public Getters / Setters
     public float FieldOfView => fieldOfView;
     public float Sight => sight;
@@ -172,6 +176,10 @@ namespace Dead_Earth.Scripts.AI
     {
       base.Start();
 
+      // cache the Animator layer indices
+      _lowerBodyLayer = _animator.GetLayerIndex("Lower Body");
+      _upperBodyLayer = _animator.GetLayerIndex("Upper Body");
+
       // take a snapshot of the bones of the root bone
       if (rootBone != null)
       {
@@ -215,6 +223,20 @@ namespace Dead_Earth.Scripts.AI
     {
       if (_animator != null)
       {
+        if (_lowerBodyLayer != -1)
+        {
+          // make sure do not activate this layer when crawling
+          var weight = lowerBodyDamage > limpThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
+          _animator.SetLayerWeight(_lowerBodyLayer, weight);
+        }
+
+        if (_upperBodyLayer != -1)
+        {
+          // make sure do not activate this layer when crawling
+          var weight = upperBodyDamage > upperBodyThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
+          _animator.SetLayerWeight(_upperBodyLayer, weight);
+        }
+
         _animator.SetBool(_isCrawlingHash, IsCrawling);
 
         _animator.SetInteger(_lowerBodyDamageHash, lowerBodyDamage);
