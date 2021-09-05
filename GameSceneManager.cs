@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.FPS;

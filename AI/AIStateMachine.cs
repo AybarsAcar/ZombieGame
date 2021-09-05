@@ -9,17 +9,18 @@ namespace Dead_Earth.Scripts.AI
 {
   /// <summary>
   /// States that AI can take
+  /// also passed down to the Animator as an int
   /// </summary>
   public enum AIStateType
   {
-    None,
-    Idle,
-    Alerted,
-    Attack,
-    Feeding,
-    Pursuit,
-    Dead,
-    Patrol
+    None, // 0
+    Idle, // 1
+    Alerted, // 2
+    Attack, // 3
+    Feeding, // 4
+    Pursuit, // 5
+    Dead, // 6
+    Patrol // 7
   }
 
   /// <summary>
@@ -41,6 +42,20 @@ namespace Dead_Earth.Scripts.AI
     Enter,
     Stay,
     Exit
+  }
+
+  /// <summary>
+  /// describes the direction of the forward vector of the hip bone
+  /// Z Axis is hte most common case and should be case for all the models but sometimes it is not
+  /// </summary>
+  public enum AIBoneAlignmentType
+  {
+    XAxis,
+    YAxis,
+    ZAxis,
+    XAxisInverted,
+    YAxisInverted,
+    ZAxisInverted
   }
 
   /// <summary>
@@ -112,7 +127,8 @@ namespace Dead_Earth.Scripts.AI
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
-    [SerializeField] protected Transform rootBone;
+    [SerializeField] protected Transform rootBone; // this is the hip bone of the AI
+    [SerializeField] protected AIBoneAlignmentType rootBoneAlignment = AIBoneAlignmentType.ZAxis;
     [SerializeField] protected SphereCollider targetTrigger;
     [SerializeField] protected SphereCollider sensorTrigger;
     [SerializeField] [Range(0, 15)] protected float stoppingDistance = 1f;

@@ -16,7 +16,8 @@ namespace Dead_Earth.Scripts.AI
     private float _timer = 0;
 
     // Animator Hashes
-    private int _eatingStateHash = Animator.StringToHash("Feeding State");
+    private readonly int _eatingStateHash = Animator.StringToHash("Feeding State");
+    private readonly int _crawlEatingStateHash = Animator.StringToHash("Crawl Feeding State");
     private int _eatingLayerIndex = -1;
 
 
@@ -87,7 +88,9 @@ namespace Dead_Earth.Scripts.AI
 
       // is the feeding animation currently playing now
       if (_zombieStateMachine.AIAnimator.GetCurrentAnimatorStateInfo(_eatingLayerIndex).shortNameHash ==
-          _eatingStateHash)
+          _eatingStateHash ||
+          _zombieStateMachine.AIAnimator.GetCurrentAnimatorStateInfo(_eatingLayerIndex).shortNameHash ==
+          _crawlEatingStateHash)
       {
         // add to satisfaction
         _zombieStateMachine.Satisfaction =
@@ -130,6 +133,13 @@ namespace Dead_Earth.Scripts.AI
         _zombieStateMachine.transform.rotation =
           Quaternion.Slerp(_zombieStateMachine.transform.rotation, newRotation, Time.deltaTime * slerpSpeed);
       }
+
+      // move the zombie to the feeding target
+      var headToTarget = _zombieStateMachine.CurrentTargetPosition -
+                         _zombieStateMachine.AIAnimator.GetBoneTransform(HumanBodyBones.Head).position;
+
+      _zombieStateMachine.transform.position = Vector3.Lerp(_zombieStateMachine.transform.position,
+        _zombieStateMachine.transform.position + headToTarget, Time.deltaTime);
 
 
       // default state

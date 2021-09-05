@@ -83,7 +83,7 @@ namespace Dead_Earth.Scripts.FPS
 
         if (aiStateMachine != null)
         {
-          aiStateMachine.TakeDamage(hit.point, ray.direction * 25f, 50, hit.rigidbody, this, 0);
+          aiStateMachine.TakeDamage(hit.point, ray.direction * 25f, 25, hit.rigidbody, this, 0);
         }
       }
     }
@@ -98,7 +98,7 @@ namespace Dead_Earth.Scripts.FPS
 
       if (cameraBloodEffect != null)
       {
-        cameraBloodEffect.MinBloodAmount = (1f - health / 100f) / 2f;
+        cameraBloodEffect.MinBloodAmount = (1f - health / 100f) / 1.5f;
         cameraBloodEffect.BloodAmount = Mathf.Min(cameraBloodEffect.MinBloodAmount + 0.3f, 1f);
       }
     }

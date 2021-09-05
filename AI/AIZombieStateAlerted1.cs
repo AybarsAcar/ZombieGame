@@ -14,6 +14,9 @@ namespace Dead_Earth.Scripts.AI
 
     [SerializeField] [Range(1f, 5f)] private float directionChangeDuration = 1.5f;
 
+    [Tooltip("Slerp speed in degrees")] [SerializeField]
+    private float slerpSpeed = 45f;
+
     private float _timer;
     private float _directionChangeTimer;
 
@@ -157,6 +160,13 @@ namespace Dead_Earth.Scripts.AI
           _zombieStateMachine.Seeking = (int)Mathf.Sign(Random.Range(-1f, 1f));
           _directionChangeTimer = 0f;
         }
+      }
+
+      // handle rotation for the crawling state
+      if (!_zombieStateMachine.useRootMotionRotation)
+      {
+        _zombieStateMachine.transform
+          .Rotate(new Vector3(0f, slerpSpeed * _zombieStateMachine.Seeking * Time.deltaTime, 0f));
       }
 
       return AIStateType.Alerted;

@@ -1,5 +1,8 @@
+using System.Collections;
+using System.Collections.Generic;
 using Dead_Earth.Scripts.FPS;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Dead_Earth.Scripts.AI
 {
@@ -70,6 +73,16 @@ namespace Dead_Earth.Scripts.AI
 
     [SerializeField] [Range(0, 100)] private int crawlThreshold = 90;
 
+    [Header("Animation")] [Tooltip("Blend time from the rag doll position to animated state")] [SerializeField]
+    private float reanimationBlendTime = 1.5f;
+
+    [SerializeField] [Tooltip("Time from we rag dolled the AI to reanimate")]
+    private float reanimationWaitTime = 3f;
+
+    // set it to default if we dont have specialised layers for geometry
+    [Tooltip("What layer we wish it to consider as geometry for raycast")] [SerializeField]
+    private LayerMask geometryLayers;
+
 
     private int _seeking = 0;
     private bool _isFeeding = false;
@@ -78,6 +91,16 @@ namespace Dead_Earth.Scripts.AI
 
     // RagDoll members
     private AIBoneControlType _boneControlType = AIBoneControlType.Animated;
+    private List<BodyPartSnapshot> _bodyPartSnapshots = new List<BodyPartSnapshot>();
+    private float _ragDollEndTime = float.MinValue;
+    private Vector3 _ragDollHipPosition;
+    private Vector3 _ragDollFeetPosition;
+    private Vector3 _ragDollHeadPosition;
+    private IEnumerator _reanimationCoroutine = null;
+
+    // delay variable for the late update, to bias the t value when lerping
+    private float _mechanimTransitionTime = 0.1f;
+
 
     // Animator Hashes
     private readonly int _speedHash = Animator.StringToHash("speed");
@@ -87,6 +110,11 @@ namespace Dead_Earth.Scripts.AI
     private readonly int _attackHash = Animator.StringToHash("attack");
     private readonly int _hitHash = Animator.StringToHash("hit");
     private readonly int _hitTypeHash = Animator.StringToHash("hitType");
+    private readonly int _reanimateFromFrontHash = Animator.StringToHash("reanimateFromFront");
+    private readonly int _reanimateFromBackHash = Animator.StringToHash("reanimateFromBack");
+    private readonly int _upperBodyDamageHash = Animator.StringToHash("upperBodyDamage");
+    private readonly int _lowerBodyDamageHash = Animator.StringToHash("lowerBodyDamage");
+    private readonly int _stateHash = Animator.StringToHash("state");
 
     // Public Getters / Setters
     public float FieldOfView => fieldOfView;
@@ -144,6 +172,17 @@ namespace Dead_Earth.Scripts.AI
     {
       base.Start();
 
+      // take a snapshot of the bones of the root bone
+      if (rootBone != null)
+      {
+        var transforms = rootBone.GetComponentsInChildren<Transform>();
+        foreach (var t in transforms)
+        {
+          var snapShot = new BodyPartSnapshot { transform = t };
+          _bodyPartSnapshots.Add(snapShot);
+        }
+      }
+
       UpdateAnimatorDamage();
     }
 
@@ -162,6 +201,7 @@ namespace Dead_Earth.Scripts.AI
         _animator.SetInteger(_seekingHash, _seeking);
         _animator.SetBool(_isFeedingHash, _isFeeding);
         _animator.SetInteger(_attackHash, _attackType);
+        _animator.SetInteger(_stateHash, (int)currentStateType);
       }
 
       // reduce the satisfaction of the zombie so it gets hungry
@@ -176,6 +216,9 @@ namespace Dead_Earth.Scripts.AI
       if (_animator != null)
       {
         _animator.SetBool(_isCrawlingHash, IsCrawling);
+
+        _animator.SetInteger(_lowerBodyDamageHash, lowerBodyDamage);
+        _animator.SetInteger(_upperBodyDamageHash, upperBodyDamage);
       }
     }
 
@@ -236,6 +279,14 @@ namespace Dead_Earth.Scripts.AI
           if (health > 0)
           {
             // Re-animate Zombie
+            if (_reanimationCoroutine != null)
+            {
+              StopCoroutine(_reanimationCoroutine);
+            }
+
+            // should re-animate
+            _reanimationCoroutine = ReanimateCoroutine();
+            StartCoroutine(_reanimationCoroutine);
           }
         }
 
@@ -374,7 +425,182 @@ namespace Dead_Earth.Scripts.AI
 
       if (health > 0)
       {
+        if (_reanimationCoroutine != null)
+        {
+          StopCoroutine(_reanimationCoroutine);
+        }
+
         // should re-animate
+        _reanimationCoroutine = ReanimateCoroutine();
+        StartCoroutine(_reanimationCoroutine);
+      }
+    }
+
+    /// <summary>
+    /// Starts the Reanimation Routine from the RagDoll state to Animated State
+    /// this reanimation system works with only humanoid avatars
+    /// </summary>
+    /// <returns></returns>
+    protected IEnumerator ReanimateCoroutine()
+    {
+      if (_boneControlType != AIBoneControlType.RagDoll || _animator == null) yield break;
+
+      yield return new WaitForSeconds(reanimationWaitTime);
+
+      _ragDollEndTime = Time.time;
+
+      // make the rigidbodies kinematic
+      foreach (var body in _bodyParts)
+      {
+        // to prevent the physics system to change its position and rotation
+        body.isKinematic = true;
+      }
+
+      // start the bone blending
+      _boneControlType = AIBoneControlType.RagDollToAnim;
+
+      foreach (var snapshot in _bodyPartSnapshots)
+      {
+        // store a reference of the transform properties of the bone snapshots before the animation starts
+        // Positions and the rotations
+        // the state of the rag doll is snapshot
+        snapshot.position = snapshot.transform.position;
+        snapshot.rotation = snapshot.transform.rotation;
+      }
+
+      // store the rag doll's head and feet position
+      _ragDollHeadPosition = _animator.GetBoneTransform(HumanBodyBones.Head).position;
+      _ragDollFeetPosition = (_animator.GetBoneTransform(HumanBodyBones.LeftFoot).position +
+                              _animator.GetBoneTransform(HumanBodyBones.RightFoot).position) * 0.5f;
+      _ragDollHipPosition = rootBone.position;
+
+      // Enable Animator
+      _animator.enabled = true;
+
+      // find the way the AI is facing
+      // get the vector based on where the hip forward vector is facing
+      var forwardTest = rootBoneAlignment switch
+      {
+        AIBoneAlignmentType.ZAxis => rootBone.forward.y,
+        AIBoneAlignmentType.ZAxisInverted => -rootBone.forward.y,
+        AIBoneAlignmentType.YAxis => rootBone.up.y,
+        AIBoneAlignmentType.YAxisInverted => -rootBone.up.y,
+        AIBoneAlignmentType.XAxis => rootBone.right.y,
+        AIBoneAlignmentType.XAxisInverted => -rootBone.right.y,
+        _ => rootBone.forward.y
+      };
+
+      if (forwardTest >= 0)
+      {
+        _animator.SetTrigger(_reanimateFromBackHash);
+      }
+      else
+      {
+        _animator.SetTrigger(_reanimateFromFrontHash);
+      }
+    }
+
+    /// <summary>
+    /// Every frame after the Updates finish executing
+    /// </summary>
+    protected virtual void LateUpdate()
+    {
+      if (_boneControlType == AIBoneControlType.RagDollToAnim)
+      {
+        if (Time.time <= _ragDollEndTime + _mechanimTransitionTime)
+        {
+          // wait state
+          var animatedToRagDoll = _ragDollHipPosition - rootBone.position;
+
+          // calculate the new position of the AI Entity's position
+          // how we wish to position
+          var newRootPos = transform.position + animatedToRagDoll;
+
+          var hits = Physics.RaycastAll(newRootPos + Vector3.up * 0.5f, Vector3.down, float.MaxValue, geometryLayers);
+
+          // make sure to choose the highest surface
+          newRootPos.y = float.MinValue;
+          foreach (var hit in hits)
+          {
+            if (!hit.transform.IsChildOf(transform))
+            {
+              newRootPos.y = Mathf.Max(hit.point.y, newRootPos.y);
+            }
+          }
+
+          // factor in the base offset of the NavMeshAgent
+          var baseOffset = Vector3.zero;
+          if (_navMeshAgent != null)
+          {
+            baseOffset.y = _navMeshAgent.baseOffset;
+          }
+
+          // snap to the nav mesh
+          if (NavMesh.SamplePosition(newRootPos, out var navMeshHit, 2f, NavMesh.AllAreas))
+          {
+            transform.position = navMeshHit.position + baseOffset;
+          }
+          else
+          {
+            transform.position = newRootPos + baseOffset;
+          }
+
+          // orient the game object so it faces the same direction as the rag doll
+          var ragDollDirection = _ragDollHeadPosition - _ragDollFeetPosition;
+          ragDollDirection.y = 0f; // we only want to rotate in the x-z plane
+
+          var meanFeetPos = 0.5f * (_animator.GetBoneTransform(HumanBodyBones.LeftFoot).position +
+                                    _animator.GetBoneTransform(HumanBodyBones.RightFoot).position);
+
+          var animatedDirection = _animator.GetBoneTransform(HumanBodyBones.Head).position - meanFeetPos;
+          animatedDirection.y = 0; // we only want to rotate in the x-z plane
+
+          // Try to match the rotations. Note that we can only rotate around y axis as the animated character
+          // must stay upright, hence setting the y components of the vectors to zero
+          transform.rotation *= Quaternion.FromToRotation(animatedDirection.normalized, ragDollDirection.normalized);
+        }
+
+        // start the blending
+        // calculate interpolation value
+        // time passed since rag doll state ended / reanimation blend time
+        // we also need to bias this
+        var blendAmount = Mathf.Clamp01((Time.time - _ragDollEndTime - _mechanimTransitionTime) / reanimationBlendTime);
+
+        foreach (var snapshot in _bodyPartSnapshots)
+        {
+          if (snapshot.transform == rootBone)
+          {
+            // transition from the rag doll positions and the rotations to the position and rotation
+            // described by the animator
+            snapshot.transform.position = Vector3.Lerp(snapshot.position, snapshot.transform.position, blendAmount);
+          }
+
+          // it is not the root bone so we will only rotate it to the rotate to the rotations described
+          // by the animator
+          snapshot.transform.rotation = Quaternion.Slerp(snapshot.rotation, snapshot.transform.rotation, blendAmount);
+        }
+
+        // detect fully give control to the Animator and 0 Rag doll
+        // exits reanimation mode
+        if (blendAmount >= 1f)
+        {
+          _boneControlType = AIBoneControlType.Animated;
+          _navMeshAgent.enabled = true;
+          _collider.enabled = true;
+
+          // put the zombie back into a valid state
+          if (_states.TryGetValue(AIStateType.Alerted, out var newState))
+          {
+            if (_currentState != null)
+            {
+              _currentState.OnExitState();
+            }
+
+            newState.OnEnterState();
+            _currentState = newState;
+            currentStateType = AIStateType.Alerted;
+          }
+        }
       }
     }
   }
