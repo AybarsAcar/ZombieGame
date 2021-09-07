@@ -1,3 +1,4 @@
+using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.ImageEffects;
 using UnityEngine;
 
@@ -9,6 +10,14 @@ namespace Dead_Earth.Scripts.FPS
     [SerializeField] private CameraBloodEffect cameraBloodEffect;
 
     [SerializeField] private float health = 100f;
+
+    [Header("Player Sound Triggers")] [SerializeField]
+    private AISoundEmitter soundEmitter;
+
+    [SerializeField] private float walkSoundRadius = 2f;
+    [SerializeField] private float runSoundRadius = 7f;
+    [SerializeField] private float landSoundRadius = 12f;
+    [SerializeField] private float bloodRadiusScale = 6f;
 
     private Camera _camera;
 
@@ -50,6 +59,25 @@ namespace Dead_Earth.Scripts.FPS
       if (Input.GetMouseButtonDown(0))
       {
         DoDamage();
+      }
+
+      if (_fpsController != null && soundEmitter != null)
+      {
+        var newRadius = 0f; // 0 if standing or crouching
+
+        // imitate the damaged (smell of blood) using the sound system
+        // if we are very damaged we will trigger zombies even if not moving
+        newRadius = Mathf.Max(newRadius, (100f - health) / bloodRadiusScale);
+
+        newRadius = _fpsController.MovementStatus switch
+        {
+          PlayerMoveStatus.Landing => Mathf.Max(newRadius, landSoundRadius),
+          PlayerMoveStatus.Walking => Mathf.Max(newRadius, walkSoundRadius),
+          PlayerMoveStatus.Running => Mathf.Max(newRadius, runSoundRadius),
+          _ => newRadius
+        };
+
+        soundEmitter.SetRadius(newRadius);
       }
     }
 

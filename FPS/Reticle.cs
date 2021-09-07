@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.FPS
