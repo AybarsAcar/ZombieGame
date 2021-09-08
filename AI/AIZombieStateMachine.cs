@@ -18,6 +18,16 @@ namespace Dead_Earth.Scripts.AI
   };
 
   /// <summary>
+  /// to decide whether to spawn the sound emitter at the AI Zombie
+  /// or at the Player object, game design choice
+  /// </summary>
+  public enum AIScreamPosition
+  {
+    Entity, // Spawns at the AI Zombie Game Object's position
+    Player, // Spawns at the Player Game Object's position
+  }
+
+  /// <summary>
   /// State Machine for the Zombie NPCs
   /// </summary>
   public class AIZombieStateMachine : AIStateMachine
@@ -50,6 +60,18 @@ namespace Dead_Earth.Scripts.AI
     // in Percentage - divided by 100f in calculation
     [Tooltip("Satisfaction depleting rate in Percentage while moving")] [SerializeField]
     private float depletionRate = 0.4f;
+
+    [Header("Zombie Scream Sound Configuration")]
+    [Tooltip("The probability of a Zombie can scream when spotting the player")]
+    [SerializeField]
+    [Range(0f, 1f)]
+    private float screamChance = 1f;
+
+    [Tooltip("The range of the scream, correlates to the strength of the scream")] [SerializeField]
+    private float screamRadius = 20f;
+
+    [SerializeField] private AIScreamPosition screamPosition = AIScreamPosition.Player;
+    [SerializeField] private AISoundEmitter screamEmitterPrefab;
 
     [Header("Zombie Health & Damage Stats")]
     // health only decreases when damage to the head
@@ -88,6 +110,7 @@ namespace Dead_Earth.Scripts.AI
     private bool _isFeeding = false;
     private int _attackType = 0;
     private float _speed = 0f;
+    private float _screaming = 0f;
 
     // RagDoll members
     private AIBoneControlType _boneControlType = AIBoneControlType.Animated;
@@ -115,6 +138,8 @@ namespace Dead_Earth.Scripts.AI
     private readonly int _upperBodyDamageHash = Animator.StringToHash("upperBodyDamage");
     private readonly int _lowerBodyDamageHash = Animator.StringToHash("lowerBodyDamage");
     private readonly int _stateHash = Animator.StringToHash("state");
+    private readonly int _screamingHash = Animator.StringToHash("screaming");
+    private readonly int _screamHash = Animator.StringToHash("scream");
 
     // Animator Layers
     private int _upperBodyLayer = -1;
@@ -172,6 +197,11 @@ namespace Dead_Earth.Scripts.AI
 
     public bool IsCrawling => lowerBodyDamage >= crawlThreshold;
 
+    public bool IsScreaming => _screaming > 0.1f;
+
+    public float ScreamChance => screamChance;
+
+
     protected override void Start()
     {
       base.Start();
@@ -210,6 +240,9 @@ namespace Dead_Earth.Scripts.AI
         _animator.SetBool(_isFeedingHash, _isFeeding);
         _animator.SetInteger(_attackHash, _attackType);
         _animator.SetInteger(_stateHash, (int)currentStateType);
+
+        // are we screaming or not
+        _screaming = _cinematicEnabled ? 0f : _animator.GetFloat(_screamingHash);
       }
 
       // reduce the satisfaction of the zombie so it gets hungry
@@ -624,6 +657,25 @@ namespace Dead_Earth.Scripts.AI
           }
         }
       }
+    }
+
+    public bool Scream()
+    {
+      if (_screaming > 0.1f) return true;
+
+      if (_animator == null || _cinematicEnabled || screamEmitterPrefab == null)
+      {
+        return false;
+      }
+
+      _animator.SetTrigger(_screamHash);
+
+      var spawnPos = screamPosition == AIScreamPosition.Player ? visualThreat.position : transform.position;
+
+      var emitter = Instantiate(screamEmitterPrefab, spawnPos, Quaternion.identity);
+      emitter.SetRadius(screamRadius);
+
+      return true;
     }
   }
 }

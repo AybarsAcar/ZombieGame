@@ -606,5 +606,26 @@ namespace Dead_Earth.Scripts.AI
       CharacterManager characterManager, int hitDirection = 0)
     {
     }
+
+    /// <summary>
+    /// overrides the current state of the AI and enforces the AI to
+    /// go into the passed in state
+    /// </summary>
+    /// <param name="aiStateType">State we want to set the AI in</param>
+    public void SetStateOverride(AIStateType state)
+    {
+      if (!_states.ContainsKey(state) || state == currentStateType) return;
+
+      if (_currentState != null)
+      {
+        // clean up the existing state
+        _currentState.OnExitState();
+      }
+
+      // enter into the new state passed in
+      _currentState = _states[state];
+      currentStateType = state;
+      _currentState.OnEnterState();
+    }
   }
 }

@@ -17,8 +17,16 @@ namespace Dead_Earth.Scripts.AI
     [Tooltip("Slerp speed in degrees")] [SerializeField]
     private float slerpSpeed = 45f;
 
+    [SerializeField] private float screamFrequency = 120f;
+
+
     private float _timer;
     private float _directionChangeTimer;
+    private float _screamChance;
+
+    // next time we are allowed to scream - timer for the next scream
+    private float nextScream;
+
 
     /// <summary>
     /// is called when the AI transition to this state
@@ -43,6 +51,10 @@ namespace Dead_Earth.Scripts.AI
 
       _timer = maxDuration;
       _directionChangeTimer = 0f;
+
+      // Random.value returns a value between 0, 1
+      // we will scream if the _screamChance is positive
+      _screamChance = _zombieStateMachine.ScreamChance - Random.value;
     }
 
     public override AIStateType GetStateType()
@@ -69,6 +81,20 @@ namespace Dead_Earth.Scripts.AI
       if (_zombieStateMachine.visualThreat.type == AITargetType.VisualPlayer)
       {
         _zombieStateMachine.SetTarget(_zombieStateMachine.visualThreat);
+
+        // scream
+        if (_screamChance > 0f && Time.time > nextScream)
+        {
+          if (_zombieStateMachine.Scream())
+          {
+            // make sure do not trigger this again when we are staying in the Alerted state without leaving
+            _screamChance = float.MinValue;
+            return AIStateType.Alerted;
+          }
+
+          nextScream = Time.time + screamFrequency;
+        }
+
         return AIStateType.Pursuit;
       }
 

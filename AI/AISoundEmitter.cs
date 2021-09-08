@@ -19,7 +19,7 @@ namespace Dead_Earth.Scripts.AI
     private float _interpolator;
     private float _interpolatorSpeed;
 
-    private void Start()
+    private void Awake()
     {
       _collider = GetComponent<SphereCollider>();
       if (!_collider) return;
@@ -49,14 +49,6 @@ namespace Dead_Earth.Scripts.AI
       _collider.enabled = !(_collider.radius < Mathf.Epsilon);
     }
 
-    private void Update()
-    {
-      SetRadius(2f);
-      if (Input.GetKeyDown(KeyCode.R))
-      {
-        SetRadius(10f);
-      }
-    }
 
     /// <summary>
     /// called by the other objects that creates the sounds

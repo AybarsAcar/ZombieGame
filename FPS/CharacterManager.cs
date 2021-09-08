@@ -78,6 +78,8 @@ namespace Dead_Earth.Scripts.FPS
         };
 
         soundEmitter.SetRadius(newRadius);
+
+        _fpsController.DragMultiplierLimit = Mathf.Max(health / 100f, 0.25f);
       }
     }
 
@@ -121,6 +123,9 @@ namespace Dead_Earth.Scripts.FPS
     public void TakeDamage(float damageAmount)
     {
       health = Mathf.Max(0, health - damageAmount * Time.deltaTime);
+
+      // when we take damage we will stop for a split second
+      _fpsController.DragMultiplier = 0f;
 
       if (cameraBloodEffect != null)
       {

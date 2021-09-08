@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityStandardAssets.Characters.FirstPerson;
@@ -49,6 +50,9 @@ namespace Dead_Earth.Scripts.FPS
     // used so when we run our head bob doesn't increase linearly 
     [SerializeField] private float runSpeedHeadBobFactor = 0.7f;
 
+    [Tooltip("How much the drag multiplier is reduced when collided an AI")] [SerializeField] [Range(0f, 1f)]
+    private float _npcStickiness = 0.5f;
+
 
     // cached object references
     private Camera _camera;
@@ -66,6 +70,13 @@ namespace Dead_Earth.Scripts.FPS
     private Vector3 _localSpaceCameraPos = Vector3.zero;
     private float _controllerHeight = 0f; // initial height of the controller standing up position
 
+    private float _dragMultiplier = 1f;
+
+    // this will be decreased by the health
+    // our dragMultiplier will go upto this level
+    private float _dragMultiplierLimit = 1f;
+
+
     // test for footsteps
     private readonly List<AudioSource> _audioSources = new List<AudioSource>();
     private int _audioToUse = 0;
@@ -78,6 +89,20 @@ namespace Dead_Earth.Scripts.FPS
     public PlayerMoveStatus MovementStatus => _movementStatus;
     public float WalkSpeed => walkSpeed;
     public float RunSpeed => runSpeed;
+
+    public float DragMultiplierLimit
+    {
+      get => _dragMultiplierLimit;
+      set => _dragMultiplierLimit = Mathf.Clamp01(value);
+    }
+
+    public float DragMultiplier
+    {
+      get => _dragMultiplier;
+      set => _dragMultiplier = Mathf.Min(value, _dragMultiplierLimit);
+    }
+
+    public CharacterController FpsCharacterController => _characterController;
 
     private void Start()
     {
@@ -192,6 +217,9 @@ namespace Dead_Earth.Scripts.FPS
       }
 
       _previouslyGrounded = _characterController.isGrounded;
+
+      // recover from colliding with an AIA
+      _dragMultiplier = Mathf.Min(_dragMultiplier + Time.deltaTime, _dragMultiplierLimit);
     }
 
     private void FixedUpdate()
@@ -227,8 +255,9 @@ namespace Dead_Earth.Scripts.FPS
       }
 
       // scale movement by our current speed
-      _moveDirection.x = desiredMove.x * speed; // sideways movement
-      _moveDirection.z = desiredMove.z * speed; // forward backward movement
+      // _dragMultiplier slows down the Player when health is low or collided with an AI
+      _moveDirection.x = desiredMove.x * speed * _dragMultiplier; // sideways movement
+      _moveDirection.z = desiredMove.z * speed * _dragMultiplier; // forward backward movement
 
       if (_characterController.isGrounded)
       {
@@ -279,6 +308,15 @@ namespace Dead_Earth.Scripts.FPS
 
       // alternate
       _audioToUse = _audioToUse == 0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// handles the collisions with the AI objects in the scene
+    /// called when collided with the zombies
+    /// </summary>
+    public void HandleNpcCollision()
+    {
+      _dragMultiplier = 1f - _npcStickiness;
     }
   }
 }
