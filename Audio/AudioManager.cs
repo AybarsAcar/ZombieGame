@@ -23,7 +23,7 @@ namespace Dead_Earth.Scripts.Audio
   {
     private static AudioManager _instance;
 
-    private static AudioManager Instance
+    public static AudioManager Instance
     {
       get
       {
@@ -64,6 +64,40 @@ namespace Dead_Earth.Scripts.Audio
     }
 
     /// <summary>
+    /// Returns the Volume of the Track volume passed on the volume if exists
+    /// if does not exist returns the min float value
+    /// </summary>
+    /// <param name="track"></param>
+    /// <returns></returns>
+    public float GetTrackVolume(string track)
+    {
+      if (_tracks.TryGetValue(track, out var trackInfo))
+      {
+        mixer.GetFloat(track, out var volume);
+        return volume;
+      }
+
+      return float.MinValue;
+    }
+
+    /// <summary>
+    /// returns the AudioMixerGroup of a given trackName
+    /// returns null if the trackName does not exist 
+    /// </summary>
+    /// <param name="trackName"></param>
+    /// <returns></returns>
+    public AudioMixerGroup GetAudioGroupFromTrackName(string trackName)
+    {
+      if (_tracks.TryGetValue(trackName, out var trackInfo))
+      {
+        return trackInfo.group;
+      }
+
+      return null;
+    }
+
+
+    /// <summary>
     /// public wrapper of the internal coroutine
     /// Sets the volume of the AudioMixerGroup assigned to the passed track
     /// AudioMixerGroup MUST expose its volume variable to script for this to work and the variable MUST be
@@ -73,8 +107,31 @@ namespace Dead_Earth.Scripts.Audio
     /// <param name="track"></param>
     /// <param name="volume"></param>
     /// <param name="fadeTime"></param>
-    public void SetTrackVolume(string track, float volume, float fadeTime)
+    public void SetTrackVolume(string track, float volume, float fadeTime = 0f)
     {
+      if (!mixer) return;
+
+      if (_tracks.TryGetValue(track, out var trackInfo))
+      {
+        // stop any coroutine that might be in the middle of fading this track
+        if (trackInfo.trackFader != null)
+        {
+          StartCoroutine(trackInfo.trackFader);
+        }
+
+        if (fadeTime == 0f)
+        {
+          mixer.SetFloat(track, volume);
+        }
+        else
+        {
+          // cache the coroutine
+          trackInfo.trackFader = SetTrackVolumeInternal(track, volume, fadeTime);
+
+          // execute the coroutine
+          StartCoroutine(trackInfo.trackFader);
+        }
+      }
     }
 
     /// <summary>
