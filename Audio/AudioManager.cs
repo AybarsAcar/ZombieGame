@@ -304,7 +304,7 @@ namespace Dead_Earth.Scripts.Audio
     /// <param name="duration"></param>
     /// <param name="priority"></param>
     /// <returns></returns>
-    public IEnumerator PlayOneShotSound(string track, AudioClip clip, Vector3 position, float volume,
+    public IEnumerator PlayOneShotSoundWithDelay(string track, AudioClip clip, Vector3 position, float volume,
       float spatialBlend, float duration, int priority = 128)
     {
       yield return new WaitForSeconds(duration);
