@@ -1,5 +1,5 @@
-using System;
-using System.Collections.Generic;
+using Dead_Earth.Scripts.Audio;
+using Dead_Earth.Scripts.ScriptableObjects;
 using UnityEngine;
 using UnityStandardAssets.Characters.FirstPerson;
 
@@ -53,6 +53,10 @@ namespace Dead_Earth.Scripts.FPS
     [Tooltip("How much the drag multiplier is reduced when collided an AI")] [SerializeField] [Range(0f, 1f)]
     private float _npcStickiness = 0.5f;
 
+    [Header("Audio")] [SerializeField] private AudioCollection footSteps;
+    [SerializeField] private float runSoundMultiplier = 1.6f;
+    [SerializeField] private float crouchSoundMultiplier = 0.4f;
+
 
     // cached object references
     private Camera _camera;
@@ -75,12 +79,6 @@ namespace Dead_Earth.Scripts.FPS
     // this will be decreased by the health
     // our dragMultiplier will go upto this level
     private float _dragMultiplierLimit = 1f;
-
-
-    // test for footsteps
-    private readonly List<AudioSource> _audioSources = new List<AudioSource>();
-    private int _audioToUse = 0;
-
 
     // timers
     private float _fallingTimer = 0f;
@@ -111,12 +109,6 @@ namespace Dead_Earth.Scripts.FPS
       _controllerHeight = _characterController.height; // cache the height
 
       _camera = Camera.main;
-
-      // fill audio sources
-      foreach (var audioSource in GetComponents<AudioSource>())
-      {
-        _audioSources.Add(audioSource);
-      }
 
       // cache the local position of the camera
       _localSpaceCameraPos = _camera.transform.localPosition;
@@ -300,14 +292,28 @@ namespace Dead_Earth.Scripts.FPS
       }
     }
 
+    /// <summary>
+    /// plays footsteps sounds from the AudioManger
+    /// Player Footstep Audio Collection Scriptable object is used
+    /// at 0 we have normal steps and at index 1 we have dragging sounds
+    /// </summary>
     private void PlayFootStepSound()
     {
-      if (_isCrouching) return;
+      var soundToPlay = _isCrouching ? footSteps[1] : footSteps[0];
 
-      _audioSources[_audioToUse].Play();
+      var volume = footSteps.Volume;
+      if (_movementStatus == PlayerMoveStatus.Running)
+      {
+        volume *= runSoundMultiplier;
+      }
+      else if (_movementStatus == PlayerMoveStatus.Crouching)
+      {
+        volume *= crouchSoundMultiplier;
+      }
 
-      // alternate
-      _audioToUse = _audioToUse == 0 ? 1 : 0;
+      // play at the players current position
+      AudioManager.Instance.PlayOneShotSound("Player", soundToPlay, transform.position, volume, footSteps.SpatialBlend,
+        footSteps.Priority);
     }
 
     /// <summary>
