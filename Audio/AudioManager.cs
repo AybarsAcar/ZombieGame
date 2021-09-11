@@ -269,7 +269,7 @@ namespace Dead_Earth.Scripts.Audio
         // not playing audio pool item is available
         if (!poolItem.isPlaying)
         {
-          return ConfigurePoolObject(i, track, clip, Vector3.positiveInfinity, volume, spatialBlend, unimportance);
+          return ConfigurePoolObject(i, track, clip, position, volume, spatialBlend, unimportance);
         }
 
         // the current pool audio item is playing but less important than our new audio
@@ -284,7 +284,7 @@ namespace Dead_Earth.Scripts.Audio
       // so we stop the least important audio to play the new audio if the new audio is not the least important one
       if (leastImportanceValue > unimportance)
       {
-        return ConfigurePoolObject(leastImportantIndex, track, clip, Vector3.positiveInfinity, volume, spatialBlend,
+        return ConfigurePoolObject(leastImportantIndex, track, clip, position, volume, spatialBlend,
           unimportance);
       }
 

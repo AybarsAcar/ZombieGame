@@ -12,6 +12,14 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
     [SerializeField] private ComChannelName commandChannel = ComChannelName.ComChannel1;
     [SerializeField] private AudioCollection collection;
 
+    [Tooltip("Only used for pre-baked in animations without fbx files, to assign a custom curve instead")]
+    [SerializeField]
+    private CustomCurve customCurve;
+
+    // if any of the excluded layers are active ignore the request; otherwise, play the sound
+    [Tooltip("List of layers that we want to override this Audio Collection Player")] [SerializeField]
+    private StringList layerExclusions;
+
     // we cast the command to an integer from enum
     private int previousCommand = 0;
     private AudioManager _audioManager;
@@ -31,12 +39,18 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
 
     public override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-      base.OnStateUpdate(animator, stateInfo, layerIndex);
-
       if (layerIndex != 0 && animator.GetLayerWeight(layerIndex).Equals(0f)) return;
       if (_stateMachine == null) return;
 
-      var command = Mathf.FloorToInt(animator.GetFloat(_commandChannelHash));
+      // check for a custom curve which is used for pre-baked animations as a work around
+      // if the animation has an .fbx file this code will return 0
+      var customCommand = customCurve == null
+        ? 0
+        : Mathf.FloorToInt(customCurve.Evaluate(stateInfo.normalizedTime - (long)stateInfo.normalizedTime));
+
+      // fetch the command for the animations with no custom curve
+      // because they have an .fbx file that we can set the curve already
+      var command = customCommand != 0 ? customCommand : Mathf.FloorToInt(animator.GetFloat(_commandChannelHash));
 
       if (previousCommand != command && command > 0 && _audioManager != null)
       {
@@ -46,7 +60,7 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
 
         // play the sound
         _audioManager.PlayOneShotSound(collection.AudioGroup, collection[bank], _stateMachine.transform.position,
-          collection.SpatialBlend, collection.Priority);
+          collection.Volume, collection.SpatialBlend, collection.Priority);
       }
 
       previousCommand = command;
