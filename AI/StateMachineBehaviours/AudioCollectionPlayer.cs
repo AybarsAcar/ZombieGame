@@ -42,6 +42,15 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
       if (layerIndex != 0 && animator.GetLayerWeight(layerIndex).Equals(0f)) return;
       if (_stateMachine == null) return;
 
+      // play only if more important layers are disabled
+      if (layerExclusions != null)
+      {
+        for (int i = 0; i < layerExclusions.Count; i++)
+        {
+          if (_stateMachine.IsLayerActive(layerExclusions[i])) return;
+        }
+      }
+
       // check for a custom curve which is used for pre-baked animations as a work around
       // if the animation has an .fbx file this code will return 0
       var customCommand = customCurve == null

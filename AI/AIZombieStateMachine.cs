@@ -242,7 +242,7 @@ namespace Dead_Earth.Scripts.AI
         _animator.SetInteger(_stateHash, (int)currentStateType);
 
         // are we screaming or not
-        _screaming = _cinematicEnabled ? 0f : _animator.GetFloat(_screamingHash);
+        _screaming = IsLayerActive("Cinematic") ? 0f : _animator.GetFloat(_screamingHash);
       }
 
       // reduce the satisfaction of the zombie so it gets hungry
@@ -254,26 +254,47 @@ namespace Dead_Earth.Scripts.AI
     /// </summary>
     protected void UpdateAnimatorDamage()
     {
-      if (_animator != null)
+      if (_animator == null) return;
+
+      if (_lowerBodyLayer != -1)
       {
-        if (_lowerBodyLayer != -1)
-        {
-          // make sure do not activate this layer when crawling
-          var weight = lowerBodyDamage > limpThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
-          _animator.SetLayerWeight(_lowerBodyLayer, weight);
-        }
+        // make sure do not activate this layer when crawling
+        var weight = lowerBodyDamage > limpThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
+        _animator.SetLayerWeight(_lowerBodyLayer, weight);
+      }
 
-        if (_upperBodyLayer != -1)
-        {
-          // make sure do not activate this layer when crawling
-          var weight = upperBodyDamage > upperBodyThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
-          _animator.SetLayerWeight(_upperBodyLayer, weight);
-        }
+      if (_upperBodyLayer != -1)
+      {
+        // make sure do not activate this layer when crawling
+        var weight = upperBodyDamage > upperBodyThreshold && lowerBodyDamage < crawlThreshold ? 1f : 0f;
+        _animator.SetLayerWeight(_upperBodyLayer, weight);
+      }
 
-        _animator.SetBool(_isCrawlingHash, IsCrawling);
+      _animator.SetBool(_isCrawlingHash, IsCrawling);
 
-        _animator.SetInteger(_lowerBodyDamageHash, lowerBodyDamage);
-        _animator.SetInteger(_upperBodyDamageHash, upperBodyDamage);
+      _animator.SetInteger(_lowerBodyDamageHash, lowerBodyDamage);
+      _animator.SetInteger(_upperBodyDamageHash, upperBodyDamage);
+
+      // set the active layers in the animation state because we set this layer active
+      // from changing its layer weight
+      if (lowerBodyDamage > limpThreshold && lowerBodyDamage < crawlThreshold)
+      {
+        // set it from code because we don't have an empty state in the layer
+        SetLayerActive("Lower Body", true);
+      }
+      else
+      {
+        SetLayerActive("Lower Body", false);
+      }
+
+      if (upperBodyDamage > upperBodyThreshold && lowerBodyDamage < crawlThreshold)
+      {
+        // set it from code because we don't have an empty state in the layer
+        SetLayerActive("Upper Body", true);
+      }
+      else
+      {
+        SetLayerActive("Upper Body", false);
       }
     }
 
@@ -388,7 +409,7 @@ namespace Dead_Earth.Scripts.AI
         }
       }
 
-      if (_boneControlType != AIBoneControlType.Animated || IsCrawling || _cinematicEnabled ||
+      if (_boneControlType != AIBoneControlType.Animated || IsCrawling || IsLayerActive("Cinematic") ||
           attackerLocalPosition.z < 0)
       {
         shouldRagDoll = true;
@@ -663,7 +684,7 @@ namespace Dead_Earth.Scripts.AI
     {
       if (_screaming > 0.1f) return true;
 
-      if (_animator == null || _cinematicEnabled || screamEmitterPrefab == null)
+      if (_animator == null || IsLayerActive("Cinematic") || screamEmitterPrefab == null)
       {
         return false;
       }

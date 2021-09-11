@@ -13,5 +13,7 @@ namespace Dead_Earth.Scripts.ScriptableObjects
     [SerializeField] private List<string> stringList = new List<string>();
 
     public string this[int i] => i < stringList.Count ? stringList[i] : null;
+
+    public int Count => stringList.Count;
   }
 }

@@ -5,7 +5,7 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
   /// <summary>
   /// Attached onto the Empty State on the Cinematic Layer in the Animator
   /// </summary>
-  public class CinematicEnabler : AIStateMachineLink
+  public class LayerEnabler : AIStateMachineLink
   {
     public bool onEnter;
     public bool onExit;
@@ -17,17 +17,17 @@ namespace Dead_Earth.Scripts.AI.StateMachineBehaviours
 
       if (_stateMachine != null)
       {
-        _stateMachine.CinematicEnabled = onEnter;
+        _stateMachine.SetLayerActive(animator.GetLayerName(layerIndex), onEnter);
       }
     }
 
     public override void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
       base.OnStateExit(animator, stateInfo, layerIndex);
-      
+
       if (_stateMachine != null)
       {
-        _stateMachine.CinematicEnabled = onExit;
+        _stateMachine.SetLayerActive(animator.GetLayerName(layerIndex), onExit);
       }
     }
   }

@@ -123,7 +123,9 @@ namespace Dead_Earth.Scripts.AI
     protected List<Rigidbody> _bodyParts = new List<Rigidbody>();
     protected int _aiBodyPartLayer = -1;
 
-    protected bool _cinematicEnabled = false;
+    // Animation Layer Manager
+    // keep track of the currently active animator layers by setting it's bool value
+    protected Dictionary<string, bool> _animatorLayersActive = new Dictionary<string, bool>();
 
     // idle is its default state
     [SerializeField] protected AIStateType currentStateType = AIStateType.Idle;
@@ -191,13 +193,6 @@ namespace Dead_Earth.Scripts.AI
         return Mathf.Max(radius, sensorTrigger.radius * sensorTrigger.transform.lossyScale.z);
       }
     }
-
-    public bool CinematicEnabled
-    {
-      get => _cinematicEnabled;
-      set => _cinematicEnabled = value;
-    }
-
 
     /// <summary>
     /// whether to use Root Motion Position
@@ -355,6 +350,27 @@ namespace Dead_Earth.Scripts.AI
 
       // set it to false at each physics update
       _isTargetReached = false;
+    }
+    
+    /// <summary>
+    /// sets the layer active in the local cached dictionary
+    /// used to enable or disable the animation layer
+    /// </summary>
+    /// <param name="layerName">Name of the Animator Layer</param>
+    /// <param name="isActive"></param>
+    public void SetLayerActive(string layerName, bool isActive)
+    {
+      _animatorLayersActive[layerName] = isActive;
+    }
+
+    public bool IsLayerActive(string layerName)
+    {
+      if (_animatorLayersActive.TryGetValue(layerName, out var result))
+      {
+        return result;
+      }
+
+      return false;
     }
 
     /// <summary>
