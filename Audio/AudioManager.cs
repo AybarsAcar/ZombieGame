@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -63,6 +64,7 @@ namespace Dead_Earth.Scripts.Audio
 
     private Dictionary<string, TrackInfo> _tracks = new Dictionary<string, TrackInfo>();
     private List<AudioPoolItem> _pool = new List<AudioPoolItem>();
+    private List<LayeredAudioSource> _layeredAudios = new List<LayeredAudioSource>();
 
     // stores the currently playing / active sounds from our pool list
     private Dictionary<ulong, AudioPoolItem> _activePool = new Dictionary<ulong, AudioPoolItem>();
@@ -123,6 +125,68 @@ namespace Dead_Earth.Scripts.Audio
     private void OnDisable()
     {
       SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void Update()
+    {
+      // update any layered audio sources
+      foreach (var layeredAudioSource in _layeredAudios)
+      {
+        if (layeredAudioSource != null)
+        {
+          layeredAudioSource.Update();
+        }
+      }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="layers"></param>
+    /// <returns></returns>
+    public ILayeredAudioSource RegisterLayeredAudioSource(AudioSource source, int layers)
+    {
+      if (source == null || layers <= 0) return null;
+
+      foreach (var item in _layeredAudios)
+      {
+        if (item.AudioSource == source)
+        {
+          return item;
+        }
+      }
+
+      // create a new audio source item and add it to the managed list
+      var newLayeredAudio = new LayeredAudioSource(source, layers);
+      _layeredAudios.Add(newLayeredAudio);
+
+      return newLayeredAudio;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="source"></param>
+    public void UnregisterLayeredAudioSource(ILayeredAudioSource source)
+    {
+      _layeredAudios.Remove((LayeredAudioSource)source);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="source"></param>
+    public void UnregisterLayeredAudioSource(AudioSource source)
+    {
+      foreach (var layeredAudioSource in _layeredAudios)
+      {
+        if (layeredAudioSource.AudioSource == source)
+        {
+          _layeredAudios.Remove(layeredAudioSource);
+          return;
+        }
+      }
     }
 
     /// <summary>

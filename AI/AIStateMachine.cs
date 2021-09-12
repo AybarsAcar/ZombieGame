@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using Dead_Earth.Scripts.AI.StateMachineBehaviours;
+using Dead_Earth.Scripts.Audio;
 using Dead_Earth.Scripts.FPS;
+using Dead_Earth.Scripts.ScriptableObjects;
 using UnityEngine;
 using UnityEngine.AI;
 using Random = UnityEngine.Random;
@@ -142,6 +145,8 @@ namespace Dead_Earth.Scripts.AI
 
     protected int _currentWaypoint = -1;
 
+    private ILayeredAudioSource _layeredAudioSource = null;
+
     // Component Cache
     protected Animator _animator;
     protected NavMeshAgent _navMeshAgent;
@@ -212,6 +217,9 @@ namespace Dead_Earth.Scripts.AI
       _navMeshAgent = GetComponent<NavMeshAgent>();
       _collider = GetComponent<Collider>();
 
+      // cache the Audio Source Reference from Layered AI Audio
+      var audioSource = GetComponent<AudioSource>();
+
       // get BodyPart Layer
       _aiBodyPartLayer = LayerMask.NameToLayer("AI Body Part");
 
@@ -248,6 +256,9 @@ namespace Dead_Earth.Scripts.AI
           }
         }
       }
+
+      // register the layered audio source
+      _layeredAudioSource = AudioManager.Instance.RegisterLayeredAudioSource(audioSource, _animator.layerCount);
     }
 
     protected virtual void Start()
@@ -351,7 +362,7 @@ namespace Dead_Earth.Scripts.AI
       // set it to false at each physics update
       _isTargetReached = false;
     }
-    
+
     /// <summary>
     /// sets the layer active in the local cached dictionary
     /// used to enable or disable the animation layer
@@ -361,6 +372,12 @@ namespace Dead_Earth.Scripts.AI
     public void SetLayerActive(string layerName, bool isActive)
     {
       _animatorLayersActive[layerName] = isActive;
+
+      if (isActive == false && _layeredAudioSource != null)
+      {
+        // stop the sound if the layer is deactivated
+        _layeredAudioSource.Stop(_animator.GetLayerIndex(layerName));
+      }
     }
 
     public bool IsLayerActive(string layerName)
@@ -371,6 +388,37 @@ namespace Dead_Earth.Scripts.AI
       }
 
       return false;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="clipPool"></param>
+    /// <param name="bank"></param>
+    /// <param name="layer"></param>
+    /// <param name="looping"></param>
+    /// <returns></returns>
+    public bool PlayAudio(AudioCollection clipPool, int bank, int layer, bool looping = false)
+    {
+      if (_layeredAudioSource == null) return false;
+
+      return _layeredAudioSource.Play(clipPool, bank, layer, looping);
+    }
+
+    public void StopAudio(int layer)
+    {
+      if (_layeredAudioSource != null)
+      {
+        _layeredAudioSource.Stop(layer);
+      }
+    }
+
+    public void MuteAudio(bool mute)
+    {
+      if (_layeredAudioSource != null)
+      {
+        _layeredAudioSource.Mute(mute);
+      }
     }
 
     /// <summary>
@@ -627,7 +675,7 @@ namespace Dead_Earth.Scripts.AI
     /// overrides the current state of the AI and enforces the AI to
     /// go into the passed in state
     /// </summary>
-    /// <param name="aiStateType">State we want to set the AI in</param>
+    /// <param name="state">State we want to set the AI in</param>
     public void SetStateOverride(AIStateType state)
     {
       if (!_states.ContainsKey(state) || state == currentStateType) return;
@@ -642,6 +690,20 @@ namespace Dead_Earth.Scripts.AI
       _currentState = _states[state];
       currentStateType = state;
       _currentState.OnEnterState();
+    }
+
+    /// <summary>
+    /// Unity Event function
+    /// To unregister our audio sources when we are destroyed as the AudioManager is a multi-scene object.
+    /// Otherwise, it will still try to update audio layers to audio sources which have been destroyed
+    /// </summary>
+    public void OnDestroy()
+    {
+      if (_layeredAudioSource != null && AudioManager.Instance != null)
+      {
+        // to avoid broken references and potential memory leak
+        AudioManager.Instance.UnregisterLayeredAudioSource(_layeredAudioSource);
+      }
     }
   }
 }
