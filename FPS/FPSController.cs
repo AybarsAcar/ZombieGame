@@ -34,14 +34,25 @@ namespace Dead_Earth.Scripts.FPS
   [RequireComponent(typeof(CharacterController))]
   public class FPSController : MonoBehaviour
   {
-    [SerializeField] private float walkSpeed = 2.4f;
+    [Header("Player Locomotion")] [SerializeField]
+    private float walkSpeed = 2.4f;
+
     [SerializeField] private float runSpeed = 4.5f;
     [SerializeField] private float jumpSpeed = 7.5f;
     [SerializeField] private float crouchSpeed = 1f;
-    [SerializeField] private float stickToGroundForce = 5.5f;
+
+    [Header("Player Stamina")] [SerializeField]
+    private float staminaDepletion = 5f;
+
+    [SerializeField] private float staminaRecovery = 10f;
+
+    [Header("Other Configuration")] [SerializeField]
+    private float stickToGroundForce = 5.5f;
+
     [SerializeField] private float gravityMultiplier = 2.5f;
 
     [SerializeField] private GameObject flashLight;
+    [SerializeField] private bool flashLightOnStart;
 
     [SerializeField] private MouseLook mouseLook;
 
@@ -80,6 +91,9 @@ namespace Dead_Earth.Scripts.FPS
     // our dragMultiplier will go upto this level
     private float _dragMultiplierLimit = 1f;
 
+    private float _stamina = 100f;
+    private bool _freezeMovement = false; // used in cut scenes
+
     // timers
     private float _fallingTimer = 0f;
 
@@ -101,6 +115,14 @@ namespace Dead_Earth.Scripts.FPS
     }
 
     public CharacterController FpsCharacterController => _characterController;
+
+    public float Stamina => _stamina;
+
+    public bool FreezeMovement
+    {
+      get => _freezeMovement;
+      set => _freezeMovement = value;
+    }
 
     private void Start()
     {
@@ -129,7 +151,7 @@ namespace Dead_Earth.Scripts.FPS
 
       if (flashLight)
       {
-        flashLight.SetActive(false);
+        flashLight.SetActive(flashLightOnStart);
       }
     }
 
@@ -210,6 +232,18 @@ namespace Dead_Earth.Scripts.FPS
 
       _previouslyGrounded = _characterController.isGrounded;
 
+      // calculate the current stamina
+      if (_movementStatus == PlayerMoveStatus.Running)
+      {
+        // deplete stamina while running
+        _stamina = Mathf.Max(_stamina - staminaDepletion * Time.deltaTime, 0f);
+      }
+      else
+      {
+        // recover in any other state
+        _stamina = Mathf.Min(_stamina + staminaRecovery * Time.deltaTime, 100f);
+      }
+
       // recover from colliding with an AIA
       _dragMultiplier = Mathf.Min(_dragMultiplier + Time.deltaTime, _dragMultiplierLimit);
     }
@@ -220,10 +254,10 @@ namespace Dead_Earth.Scripts.FPS
       var horizontal = Input.GetAxis("Horizontal");
       var vertical = Input.GetAxis("Vertical");
 
-      var wasWalking = _isWalking;
       _isWalking = !Input.GetKey(KeyCode.LeftShift);
 
-      var speed = _isCrouching ? crouchSpeed : _isWalking ? walkSpeed : runSpeed;
+      var speed = _isCrouching ? crouchSpeed :
+        _isWalking ? walkSpeed : Mathf.Lerp(walkSpeed, runSpeed, _stamina / 100f);
 
       _inputVector = new Vector2(horizontal, vertical);
 
@@ -248,8 +282,8 @@ namespace Dead_Earth.Scripts.FPS
 
       // scale movement by our current speed
       // _dragMultiplier slows down the Player when health is low or collided with an AI
-      _moveDirection.x = desiredMove.x * speed * _dragMultiplier; // sideways movement
-      _moveDirection.z = desiredMove.z * speed * _dragMultiplier; // forward backward movement
+      _moveDirection.x = !_freezeMovement ? desiredMove.x * speed * _dragMultiplier : 0f; // sideways movement
+      _moveDirection.z = !_freezeMovement ? desiredMove.z * speed * _dragMultiplier : 0f; // forward backward movement
 
       if (_characterController.isGrounded)
       {

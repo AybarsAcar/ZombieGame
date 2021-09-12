@@ -27,6 +27,8 @@ namespace Dead_Earth.Scripts.FPS
     [SerializeField] private AudioCollection painSounds;
     [SerializeField] private float painSoundOffset = 0.35f;
 
+    [Header("UI")] [SerializeField] private PlayerHUD playerHUD;
+
     private Camera _camera;
 
     private Collider _collider;
@@ -39,6 +41,8 @@ namespace Dead_Earth.Scripts.FPS
     // and played after the first pain sound is played
     private float _nextPainSoundTime;
 
+    public float Health => health;
+    public float Stamina => _fpsController != null ? _fpsController.Stamina : 0f;
 
     private void Start()
     {
@@ -65,6 +69,8 @@ namespace Dead_Earth.Scripts.FPS
 
         _gameSceneManager.RegisterPlayerInfo(_collider.GetInstanceID(), info);
       }
+
+      playerHUD.Fade(2f, ScreenFadeType.FadeIn);
     }
 
     private void Update()
@@ -93,6 +99,12 @@ namespace Dead_Earth.Scripts.FPS
         soundEmitter.SetRadius(newRadius);
 
         _fpsController.DragMultiplierLimit = Mathf.Max(health / 100f, 0.25f);
+      }
+
+      // request UI to show stats
+      if (playerHUD != null)
+      {
+        playerHUD.Invalidate(this);
       }
     }
 
