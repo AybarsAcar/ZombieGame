@@ -1,5 +1,7 @@
 using Dead_Earth.Scripts.AI;
+using Dead_Earth.Scripts.Audio;
 using Dead_Earth.Scripts.ImageEffects;
+using Dead_Earth.Scripts.ScriptableObjects;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.FPS
@@ -19,6 +21,12 @@ namespace Dead_Earth.Scripts.FPS
     [SerializeField] private float landSoundRadius = 12f;
     [SerializeField] private float bloodRadiusScale = 6f;
 
+    [Header("Player Audios")] [SerializeField]
+    private AudioCollection damageSounds;
+
+    [SerializeField] private AudioCollection painSounds;
+    [SerializeField] private float painSoundOffset = 0.35f;
+
     private Camera _camera;
 
     private Collider _collider;
@@ -26,6 +34,11 @@ namespace Dead_Earth.Scripts.FPS
     private CharacterController _characterController;
     private GameSceneManager _gameSceneManager;
     private int _aiBodyPartLayer = -1;
+
+    // used so that the pain sounds do not override each other
+    // and played after the first pain sound is played
+    private float _nextPainSoundTime;
+
 
     private void Start()
     {
@@ -120,7 +133,9 @@ namespace Dead_Earth.Scripts.FPS
     /// Decreases the Player Health based on the damage taken
     /// </summary>
     /// <param name="damageAmount"></param>
-    public void TakeDamage(float damageAmount)
+    /// <param name="doDamage"></param>
+    /// <param name="doPain"></param>
+    public void TakeDamage(float damageAmount, bool doDamage, bool doPain)
     {
       health = Mathf.Max(0, health - damageAmount * Time.deltaTime);
 
@@ -129,8 +144,25 @@ namespace Dead_Earth.Scripts.FPS
 
       if (cameraBloodEffect != null)
       {
-        cameraBloodEffect.MinBloodAmount = (1f - health / 100f) / 1.5f;
+        cameraBloodEffect.MinBloodAmount = (1f - health / 100f) * 0.75f;
         cameraBloodEffect.BloodAmount = Mathf.Min(cameraBloodEffect.MinBloodAmount + 0.3f, 1f);
+      }
+
+      if (AudioManager.Instance == null) return;
+
+      if (doDamage && damageSounds != null)
+      {
+        AudioManager.Instance.PlayOneShotSound(damageSounds.AudioGroup, damageSounds.Clip, transform.position,
+          damageSounds.Volume, damageSounds.SpatialBlend, damageSounds.Priority);
+      }
+
+
+      if (doPain && painSounds != null && _nextPainSoundTime < Time.time)
+      {
+        _nextPainSoundTime = Time.time + painSounds.Clip.length;
+
+        StartCoroutine(AudioManager.Instance.PlayOneShotSoundWithDelay(painSounds.AudioGroup, painSounds.Clip,
+          transform.position, painSounds.Volume, painSounds.SpatialBlend, painSoundOffset, painSounds.Priority));
       }
     }
   }

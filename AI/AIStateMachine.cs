@@ -145,7 +145,7 @@ namespace Dead_Earth.Scripts.AI
 
     protected int _currentWaypoint = -1;
 
-    private ILayeredAudioSource _layeredAudioSource = null;
+    protected ILayeredAudioSource _layeredAudioSource = null;
 
     // Component Cache
     protected Animator _animator;

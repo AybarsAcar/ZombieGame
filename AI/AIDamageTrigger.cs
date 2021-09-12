@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts.AI
@@ -17,11 +18,17 @@ namespace Dead_Earth.Scripts.AI
     [Tooltip("Damaged done per second basis")] [SerializeField]
     private float damageAmount = 50f;
 
+    // true then triggers sound effects on the Player
+    [SerializeField] private bool doDamageSound = true;
+    [SerializeField] private bool doPainSound = true;
+
     private AIStateMachine _stateMachine;
     private Animator _animator;
     private GameSceneManager _gameSceneManager;
 
     private int _parameterHash = -1;
+
+    private bool _firstContact;
 
 
     private void Start()
@@ -32,6 +39,16 @@ namespace Dead_Earth.Scripts.AI
       _parameterHash = Animator.StringToHash(parameter);
 
       _gameSceneManager = GameSceneManager.Instance;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+      if (!_animator) return;
+
+      if (other.gameObject.CompareTag("Player") && _animator.GetFloat(_parameterHash) > 0.9f)
+      {
+        _firstContact = true;
+      }
     }
 
     private void OnTriggerStay(Collider other)
@@ -54,7 +71,6 @@ namespace Dead_Earth.Scripts.AI
           particleSystem.Emit(bloodParticlesBurstAmount);
         }
 
-        Debug.Log("Player is damaged");
         if (_gameSceneManager != null)
         {
           // get the player info based in the other collider id
@@ -62,9 +78,12 @@ namespace Dead_Earth.Scripts.AI
 
           if (playerInfo != null && playerInfo.characterManager != null)
           {
-            playerInfo.characterManager.TakeDamage(damageAmount);
+            playerInfo.characterManager.TakeDamage(damageAmount, doDamageSound && _firstContact, doPainSound);
           }
         }
+
+        // set the contact to false since it is already been made
+        _firstContact = false;
       }
     }
   }

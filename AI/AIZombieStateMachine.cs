@@ -480,6 +480,9 @@ namespace Dead_Earth.Scripts.AI
       _animator.enabled = false;
       _collider.enabled = false; // disable the main collider as well
 
+      // mute the audio when rag dolling
+      _layeredAudioSource?.Mute(true);
+
       IsInMeleeRange = false;
 
 
