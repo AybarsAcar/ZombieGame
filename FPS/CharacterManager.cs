@@ -1,6 +1,8 @@
+using System;
 using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.Audio;
 using Dead_Earth.Scripts.ImageEffects;
+using Dead_Earth.Scripts.InteractiveItems;
 using Dead_Earth.Scripts.ScriptableObjects;
 using UnityEngine;
 
@@ -36,6 +38,7 @@ namespace Dead_Earth.Scripts.FPS
     private CharacterController _characterController;
     private GameSceneManager _gameSceneManager;
     private int _aiBodyPartLayer = -1;
+    private int _interactiveMask = 0;
 
     // used so that the pain sounds do not override each other
     // and played after the first pain sound is played
@@ -55,6 +58,7 @@ namespace Dead_Earth.Scripts.FPS
       _camera = Camera.main;
 
       _aiBodyPartLayer = LayerMask.NameToLayer("AI Body Part");
+      _interactiveMask = 1 << LayerMask.NameToLayer("Interactive");
 
       if (_gameSceneManager != null)
       {
@@ -75,6 +79,8 @@ namespace Dead_Earth.Scripts.FPS
 
     private void Update()
     {
+      ProcessInteractiveObjects();
+
       if (Input.GetMouseButtonDown(0))
       {
         DoDamage();
@@ -105,6 +111,52 @@ namespace Dead_Earth.Scripts.FPS
       if (playerHUD != null)
       {
         playerHUD.Invalidate(this);
+      }
+    }
+
+    private void ProcessInteractiveObjects()
+    {
+      Ray ray;
+      RaycastHit hit;
+      RaycastHit[] hits;
+
+      ray = _camera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+
+      // set the raycast lenght
+      var rayLength = Mathf.Lerp(1f, 1.8f, Mathf.Abs(Vector3.Dot(_camera.transform.forward, Vector3.up)));
+
+      hits = Physics.RaycastAll(ray, rayLength, _interactiveMask);
+
+      if (hits.Length > 0)
+      {
+        // we have hit something
+        var highestPriority = int.MinValue;
+        InteractiveItem priorityObject = null;
+
+        foreach (var raycastHit in hits)
+        {
+          var interactiveObject = _gameSceneManager.GetInteractiveItem(raycastHit.collider.GetInstanceID());
+
+          if (interactiveObject != null && interactiveObject.Priority > highestPriority)
+          {
+            highestPriority = interactiveObject.Priority;
+            priorityObject = interactiveObject;
+          }
+        }
+
+        if (priorityObject != null)
+        {
+          playerHUD.SetInteractionText(priorityObject.GetText());
+
+          if (Input.GetButtonDown("Use"))
+          {
+            priorityObject.Activate(this);
+          }
+        }
+      }
+      else
+      {
+        playerHUD.SetInteractionText(null);
       }
     }
 

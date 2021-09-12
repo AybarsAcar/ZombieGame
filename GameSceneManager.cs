@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.FPS;
+using Dead_Earth.Scripts.InteractiveItems;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts
@@ -41,6 +42,8 @@ namespace Dead_Earth.Scripts
     private Dictionary<int, AIStateMachine> _stateMachines = new Dictionary<int, AIStateMachine>();
 
     private Dictionary<int, PlayerInfo> _playerInfos = new Dictionary<int, PlayerInfo>();
+
+    private Dictionary<int, InteractiveItem> _interactiveItems = new Dictionary<int, InteractiveItem>();
 
 
     /// <summary>
@@ -88,6 +91,29 @@ namespace Dead_Earth.Scripts
     public PlayerInfo GetPlayerInfo(int id)
     {
       return _playerInfos.ContainsKey(id) ? _playerInfos[id] : null;
+    }
+
+    /// <summary>
+    /// caches the passed in interactive item to the class dictionary
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="interactiveItem"></param>
+    public void RegisterInteractiveItem(int id, InteractiveItem interactiveItem)
+    {
+      if (!_interactiveItems.ContainsKey(id))
+      {
+        _interactiveItems.Add(id, interactiveItem);
+      }
+    }
+
+    /// <summary>
+    /// returns the Interactive Item by its id
+    /// </summary>
+    /// <param name="id">Interactive Item's collider id</param>
+    /// <returns>Interactive item with the id or null if id doesn't exist</returns>
+    public InteractiveItem GetInteractiveItem(int id)
+    {
+      return _interactiveItems.ContainsKey(id) ? _interactiveItems[id] : null;
     }
   }
 }
