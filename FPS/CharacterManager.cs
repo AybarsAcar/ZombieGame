@@ -1,4 +1,3 @@
-using System;
 using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.Audio;
 using Dead_Earth.Scripts.ImageEffects;
@@ -46,6 +45,7 @@ namespace Dead_Earth.Scripts.FPS
 
     public float Health => health;
     public float Stamina => _fpsController != null ? _fpsController.Stamina : 0f;
+    public FPSController FpsController => _fpsController;
 
     private void Start()
     {
@@ -228,6 +228,32 @@ namespace Dead_Earth.Scripts.FPS
         StartCoroutine(AudioManager.Instance.PlayOneShotSoundWithDelay(painSounds.AudioGroup, painSounds.Clip,
           transform.position, painSounds.Volume, painSounds.SpatialBlend, painSoundOffset, painSounds.Priority));
       }
+    }
+
+    /// <summary>
+    /// Level completion sequence
+    /// </summary>
+    public void CompleteLevel()
+    {
+      _fpsController.FreezeMovement = true;
+
+      // fade the level out
+      playerHUD.Fade(4f, ScreenFadeType.FadeOut);
+      playerHUD.ShowMissionText("Mission Completed");
+      playerHUD.Invalidate(this);
+
+      // return back to main menu
+      Invoke(nameof(GameOver), 4f);
+    }
+
+    /// <summary>
+    /// ends the game
+    /// </summary>
+    private void GameOver()
+    {
+      // make the cursor available
+      Cursor.visible = true;
+      Cursor.lockState = CursorLockMode.None;
     }
   }
 }
