@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Dead_Earth.Scripts.AI;
 using Dead_Earth.Scripts.FPS;
 using Dead_Earth.Scripts.InteractiveItems;
+using Dead_Earth.Scripts.Utilities;
 using UnityEngine;
 
 namespace Dead_Earth.Scripts
@@ -45,9 +46,12 @@ namespace Dead_Earth.Scripts
 
     private Dictionary<int, InteractiveItem> _interactiveItems = new Dictionary<int, InteractiveItem>();
 
+    private Dictionary<int, MaterialController> _materialControllers = new Dictionary<int, MaterialController>();
+
 
     /// <summary>
     /// caches the passed in state machine to the class dictionary
+    /// it does not override if the AIStateMachine with the id already exists
     /// </summary>
     /// <param name="id"></param>
     /// <param name="stateMachine"></param>
@@ -72,6 +76,7 @@ namespace Dead_Earth.Scripts
 
     /// <summary>
     /// caches the passed in player info to the class dictionary
+    /// it does not override if the PlayerInfo with the id already exists
     /// </summary>
     /// <param name="id">Player's collider id</param>
     /// <param name="playerInfo"></param>
@@ -95,6 +100,7 @@ namespace Dead_Earth.Scripts
 
     /// <summary>
     /// caches the passed in interactive item to the class dictionary
+    /// it does not override if the InteractiveItem with the id already exists
     /// </summary>
     /// <param name="id"></param>
     /// <param name="interactiveItem"></param>
@@ -114,6 +120,29 @@ namespace Dead_Earth.Scripts
     public InteractiveItem GetInteractiveItem(int id)
     {
       return _interactiveItems.ContainsKey(id) ? _interactiveItems[id] : null;
+    }
+
+    /// <summary>
+    /// caches the passed in material controller to the class dictionary
+    /// it does not override if the MaterialController with the id already exists
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="materialController"></param>
+    public void RegisterMaterialController(int id, MaterialController materialController)
+    {
+      if (!_materialControllers.ContainsKey(id))
+      {
+        _materialControllers.Add(id, materialController);
+      }
+    }
+
+    private void OnDestroy()
+    {
+      // reset the material controllers
+      foreach (var pair in _materialControllers)
+      {
+        pair.Value.OnReset();
+      }
     }
   }
 }
