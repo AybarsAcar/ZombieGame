@@ -66,8 +66,13 @@ namespace Dead_Earth.Scripts
     {
       if (key == null || value == null) return false;
 
-      _gameStateDictionary.Add(key, value);
-      return true;
+      if (!_gameStateDictionary.ContainsKey(key))
+      {
+        _gameStateDictionary.Add(key, value);
+        return true;
+      }
+
+      return false;
     }
   }
 }
